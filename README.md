@@ -1,2 +1,3 @@
 # SubwayMaintenancePersonnelKnowledgeGraphGeneration
-I don't think it's necessary to describe this repo here.
+简称SMPKG
+现在还什么都没有
