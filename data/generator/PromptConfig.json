@@ -1,0 +1,10 @@
+{
+    "model": "gpt-3.5-turbo-16k",
+    "prompt": "Hello",
+    "max_tokens": 1024,
+    "n": 1,
+    "stop": "\n",
+    "stream": false,
+    "logprobs": null,
+    "temperature": 0.8
+}
