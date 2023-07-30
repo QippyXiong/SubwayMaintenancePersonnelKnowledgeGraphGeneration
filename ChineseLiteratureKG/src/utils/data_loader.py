@@ -9,13 +9,15 @@ project_path = ''.join([ item + os.path.sep for item in current_path.split(os.pa
 CN_BERT_DIR = os.path.join(project_path, 'ChineseLiteratureKG', 'model', 'chinese-bert-wwm-ext')
 DATASET_DIR = os.path.join(project_path, 'data', 'dataset', 'Chinese-Literature-NER-RE-Dataset', 'ner')
 
-cn_bert_tokenizer: BertTokenizer = BertTokenizer.from_pretrained(CN_BERT_DIR)
+# cn_bert_tokenizer: BertTokenizer = BertTokenizer.from_pretrained(CN_BERT_DIR)
 
 class NerLabelTranser():
     r""" 将实体类型文本和定义数值之间进行转换，在NerDataSet中定义了一个静态成员，不需要导入 """
     
     def __init__(self) -> None:
-        r""" 初始化，使用label2id_add方法来在遍历数据的过程中构建字典 """
+        r"""
+            初始化，遍历过程中会构建字典tag_label_dict
+        """
         self.tag_labels = ['O']
         self.tag_label_dict = { 'O' : 0 }
     
@@ -43,19 +45,22 @@ class NerLabelTranser():
         
 
 class NerDataSet(Dataset):
-    r""" 命名实体识别数据集，每个句子的长度是不对齐的 """
+    r""" 命名实体识别数据集，数据集构建时不对齐句子长度 """
 
     transer = NerLabelTranser() # 转换器，存储了标签字典
     id2label = lambda x: NerDataSet.transer.id2label(x)
     label2id = lambda x: NerDataSet.transer.label2id(x)
 
-    def __init__(self, file_path : str) -> None:
-        r""" 由于数据集不是很大，直接全部加载进内存 """
+    def __init__(self, file_path : str, tokenizer: BertTokenizer) -> None:
+        r""" 
+            由于数据集不是很大，文件内容直接全部加载进内存
+            tokenizer用于将读到的句子转换为token序列
+            数据集加载时不会进行句子对齐，这点需要注意
+        """
         self.data = []
         self.label = []
         sentence = '' # 单个句子
         tagseq = [] # 单个句子对应的标签序列
-        first = True
         with open(file_path, mode='r', encoding='UTF-8') as fd:
             for line in fd:
                 r""" 数据为每个字和对应的标签在一行，一个句子的结束会空一行 """
@@ -64,15 +69,17 @@ class NerDataSet(Dataset):
                     sentence += char
                     tagseq.append(tag[:-1])  # 除去末尾的回车
                 else:
-                    perData = cn_bert_tokenizer(sentence)
+                    perData = tokenizer(sentence)
                     self.data.append({ key: Tensor(perData[key]) for key in perData })
                     self.label.append(Tensor(NerDataSet.transer.label2id_add(tagseq)))
                     sentence = ''
                     tagseq = []
 
+
     def __len__(self) -> int:
         return len(self.data)
-    
+
+
     def __getitem__(self, index):
         return self.data[index], self.label[index]
     
