@@ -3,3 +3,4 @@ data/generator/OPENAI_APIKEY.txt
 data/dataset/*
 __pycache__
 *.bin
+dbuser.json

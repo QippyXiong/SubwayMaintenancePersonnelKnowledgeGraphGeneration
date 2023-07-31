@@ -7,17 +7,17 @@
 
 然后创建一个constraint，在neo4j的DB浏览器控制命令行中，输入以下SQL创建
 
-```SQL
+```cypher
 CREATE CONSTRAINT n10s_unique_uri FOR (r:Resource) REQUIRE r.uri IS UNIQUE
 ```
 
-导入Ontology文件，输入以下SQL，修改其中的dir为你的文件夹路径，因此请确保neo4j安装的磁盘和Ontology文件所在的磁盘相同
-```SQL
+导入Ontology文件，输入以下SQL，修改其中的dir为你的文件夹路径
+```cypher
 CALL n10s.rdf.import.fetch("file:///dir/Ontology.ttl", "Turtle");
 ```
 
 如果你是在windows操作系统上，仍建议你使用分隔符`/`，一个例子是
-```SQL
+```cypher
 CALL n10s.rdf.import.fetch("file:///D:/dev/SubwayMaintenancePersonnelKnowledgeGraphGeneration/kg/OWL/Ontology.ttl", "Turtle");
 ```
 
