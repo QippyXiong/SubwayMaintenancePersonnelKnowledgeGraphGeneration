@@ -1,4 +1,0 @@
-{
-    "uri": "bolt://localhost:7687",
-    "auth": ["neo4j", "$listalina_gdb_pass1"]
-}
