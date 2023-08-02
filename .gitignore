@@ -1,6 +1,7 @@
 *.log
 data/generator/OPENAI_APIKEY.txt
 data/dataset/*
+data/database/*
 __pycache__
 *.bin
-dbuser.json
+db.json

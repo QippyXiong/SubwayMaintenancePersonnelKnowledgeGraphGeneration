@@ -1,13 +1,14 @@
 from torch.utils.data import Dataset
 from torch import Tensor
-from transformers import BertTokenizer
+from transformers import PreTrainedTokenizerFast
+from utils.BertEncoder import BertEncoder
 import os
 
 current_path = os.path.dirname(__file__)
-project_path = ''.join([ item + os.path.sep for item in current_path.split(os.path.sep)[:-2]]) # ../..
+project_path = ''.join([ item + os.path.sep for item in current_path.split(os.path.sep)[:-3]]) # ../../..
 
 CN_BERT_DIR = os.path.join(project_path, 'ChineseLiteratureKG', 'model', 'chinese-bert-wwm-ext')
-DATASET_DIR = os.path.join(project_path, 'data', 'dataset', 'Chinese-Literature-NER-RE-Dataset', 'ner')
+NER_DATASET_DIR = os.path.join(project_path, 'data', 'dataset', 'Chinese-Literature-NER-RE-Dataset', 'ner')
 
 # cn_bert_tokenizer: BertTokenizer = BertTokenizer.from_pretrained(CN_BERT_DIR)
 
@@ -51,7 +52,7 @@ class NerDataSet(Dataset):
     id2label = lambda x: NerDataSet.transer.id2label(x)
     label2id = lambda x: NerDataSet.transer.label2id(x)
 
-    def __init__(self, file_path : str, tokenizer: BertTokenizer) -> None:
+    def __init__(self, file_path : str, seq_len: int, tokenizer: PreTrainedTokenizerFast) -> None:
         r""" 
             由于数据集不是很大，文件内容直接全部加载进内存
             tokenizer用于将读到的句子转换为token序列
@@ -61,6 +62,7 @@ class NerDataSet(Dataset):
         self.label = []
         sentence = '' # 单个句子
         tagseq = [] # 单个句子对应的标签序列
+        encoder = BertEncoder(tokenizer, seq_len)
         with open(file_path, mode='r', encoding='UTF-8') as fd:
             for line in fd:
                 r""" 数据为每个字和对应的标签在一行，一个句子的结束会空一行 """
@@ -69,9 +71,15 @@ class NerDataSet(Dataset):
                     sentence += char
                     tagseq.append(tag[:-1])  # 除去末尾的回车
                 else:
-                    perData = tokenizer(sentence)
-                    self.data.append({ key: Tensor(perData[key]) for key in perData })
-                    self.label.append(Tensor(NerDataSet.transer.label2id_add(tagseq)))
+                    # fast tokenizer can turncate itself
+                    perData = encoder(sentence)
+
+                    tag_id_seq = NerDataSet.transer.label2id_add(tagseq)
+                    tag_id_seq = [0] + tag_id_seq # 起始是cls token
+                    tag_id_seq += [0] * (seq_len - len(tag_id_seq) - 1) # padding
+
+                    self.data.append(perData)
+                    self.label.append(Tensor(tag_id_seq))
                     sentence = ''
                     tagseq = []
 
