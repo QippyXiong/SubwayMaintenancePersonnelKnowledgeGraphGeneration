@@ -201,7 +201,7 @@ def main(data_name, model_name):
         id2label=args.id2label
     )
 
-    train.train()
+    # train.train()
 
     report = train.test()
     print(report)

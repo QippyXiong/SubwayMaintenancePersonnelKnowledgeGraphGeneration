@@ -1,0 +1,9 @@
+Thing
+Person
+Location
+Time
+Metric
+Organization
+Abstract
+Physical
+Term
