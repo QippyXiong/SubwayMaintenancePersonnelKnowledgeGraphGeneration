@@ -27,7 +27,7 @@ def importOutlineClassFile(manager: DataBaseManager, file_path: str, class_name:
             # append name to list
             class_names.append(line[current_layer_level:-1])
 
-            if current_layer_level == 0: # 没有子类关系
+            if current_layer_level == 0: # 0级为起始
                 previous_class_name = line[:-1]
                 continue
             if current_layer_level > previous_layer_level:
@@ -37,14 +37,12 @@ def importOutlineClassFile(manager: DataBaseManager, file_path: str, class_name:
         
             previous_class_name = line[current_layer_level:-1]            
             sub_class_relations.append((parent_stack[-1:][0], previous_class_name))
-    
-    print(class_names, sub_class_relations)
+
     for class_label in class_names:
         query = f'''
             CREATE (:{class_name} {{ label: "{ class_label }" }})
         '''
         r = manager.execute_query(query)
-        print("?//", r)
 
     for sub_class_relation in sub_class_relations:
         query = f'''

@@ -1,0 +1,23 @@
+{
+    "train_config": { // 训练用参数
+        "batch_size"        : 12  ,
+        "epochs"            : 1   ,
+
+        "warm_up_proportion": 0.01,
+        "bert_lr"           : 3e-5,
+        "bert_decay"        : 0.01,
+        "crf_lr"            : 3e-3,
+        "crf_decay"         : 0.0,
+        "other_lr"          : 3e-5,
+        "other_decay"       : 0.00,
+        "eps"               : 1e-5
+    },
+    "model_parms": { // 模型参数
+        "bert"              : "albert-base-chinese-cluecorpussmall", // bert层选用的预训练模型，从model目录下挑一个
+        "num_labels"        : 19, // 一般由数据集决定，考虑到模型效果也受此影响，还是作为参数记录
+        "seq_len"           : 200,
+        "lstm_hidden_size"  : 128,
+        "lstm_hidden_layers": 1
+    },
+    "description": ""
+}

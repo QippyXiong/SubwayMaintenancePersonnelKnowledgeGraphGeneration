@@ -39,6 +39,7 @@ class DataBaseManager():
         self.data_base = data_base
 
     def execute_query(self, query: str):
+        r""" 向数据库执行一条query语句 """
         records, summary, keys = self.driver.execute_query(
             query,
             age=42,
