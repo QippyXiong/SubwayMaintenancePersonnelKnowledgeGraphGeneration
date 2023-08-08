@@ -8,7 +8,7 @@ from torch import Tensor
 from tqdm import tqdm
 from transformers import get_linear_schedule_with_warmup
 from typing import *
-from seqeval.metrics import f1_score, accuracy_score, classification_report
+from seqeval.metrics import classification_report
 from utils.DataSet import NerLabelTranser
 
 from threading import Thread
@@ -17,8 +17,8 @@ def validate_ner(
     net: NerModel, 
     validation_loader: DataLoader,
     device = 'cuda',
-)-> tuple[float, float]:
-    r""" return f1 score, accuracy """
+)-> tuple[dict, str]:
+    r""" return report(dict), report_text """
     net.to(device)
     net.eval()
     validate_label_true = []
@@ -43,12 +43,9 @@ def validate_ner(
                 transer.id2label(logit[i][1:length-1])
             )
 
-    valid_f1 = f1_score(validate_label_true, validate_label_pred)
-    valid_acc = accuracy_score(validate_label_true, validate_label_pred)
-    report = classification_report(validate_label_true, validate_label_pred)
-    for i in range(len(report)):
-        print(report[i])
-    return valid_f1, valid_acc, report
+    report = classification_report(validate_label_true, validate_label_pred, output_dict=True)
+    report_text =  classification_report(validate_label_true, validate_label_pred)
+    return report, report_text
 
 
 def train_ner_model_epoch(
@@ -175,7 +172,7 @@ def train_ner(
         device = 'cuda'
     ) -> None:
     r"""
-        训练ner模型，并使用 utils.Animator 显示每个epoch结果
+        训练ner模型，并使用 utils.Animator 显示每个epoch结果，每个epoch完了都会作一次 validation 验证
         net: 神经网络
         train_loader: 训练集加载迭代器
         epochs: 训练集总遍历次数
@@ -196,10 +193,8 @@ def train_ner(
     lengends = []
     animator = object()
     if epochs != 1:
-        lengends = ['train f1', 'train acc']
-        if validation_loader:
-            lengends += ['valid f1', 'valid acc']
-        animator = Animator('epoch', 'acc/f1', lengends, [1, epochs], [0., 1.])
+        lengends = ['f1 score', 'precision', 'recall']
+        animator = Animator('epoch', 'weighted avg', lengends, [0, epochs + 1], [0., 1.])
     else:
         lengends = ['loss']
         animator = Animator('step', 'loss', lengends, [1, len(train_loader)])
@@ -211,15 +206,17 @@ def train_ner(
     )
 
     def _task():
-        # 如果只有1个epoch，直接显示loss曲线
         for epoch in range(1, epochs+1):
-            train_ner_model_epoch(net, train_loader, optimizer, scheduler, device, animator if epochs == 1 else None)
-            if validation_loader is not None: # 在验证集上作一次检查
-                valid_f1, valid_acc = validate_ner(net, validation_loader)
-                print(f'[epoch:{ epoch }]\n\t[valid]f1 score: { valid_f1 }, accuracy: { valid_acc }')
-                if epochs != 1: # 不止训练一个epoch，按epoch-(f1,accuracy)显示
-                    y_point = [ valid_f1, valid_acc ]
-                    animator.add(epoch, y_point)
+            train_ner_model_epoch(net, train_loader, optimizer, scheduler, device, animator if epochs == 1 else None) # 如果只有1个epoch，直接显示loss曲线
+            if validation_loader is not None and epochs > 1: # 在验证集上作检查
+                report, report_text = validate_ner(net, validation_loader)
+                net.report['validation'] = report
+                net.valid_report = report_text
+                print(f'[epoch:{ epoch }], validation status:')
+                print(report_text)
+                 # 不止训练一个epoch，按epoch-(f1,precision,recall)显示
+                y_point = [ report['weighted avg']['f1-score'], report['weighted avg']['precision'], report['weighted avg']['recall']  ]
+                animator.add(epoch, y_point)
     
     t = Thread(target = _task)
     t.start()

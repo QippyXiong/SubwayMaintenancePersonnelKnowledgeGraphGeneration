@@ -1,7 +1,7 @@
 from ner_model import NerModel, load_ner_model
 from ner_model.Train import train_ner, validate_ner
 import os
-import json5 as json # 使用json以保证config文件内可以写注释
+import json5 as json # 使用json5以保证config文件内可以写注释
 from utils.DataSet import NerDataSet, NER_DATASET_DIR, NerLabelTranser
 from torch.utils.data import DataLoader
 from utils.BertEmbedder import BertEmbedder, MODEL_DIR
@@ -57,15 +57,16 @@ class Controller:
         train_loader = DataLoader(train_ds, batch_size=self.ner.config['train_config']['batch_size'], shuffle=True)
         train_ner(self.ner, train_loader, self.ner.config['train_config']['epochs'], None)
         
-    def validate_ner(self)-> tuple[int, int]:
+    def validate_ner(self)-> dict:
+        r""" 会返回验证结果字典 """
         self.bert_embedder.seq_len = self.ner.seq_len
         valid_ds = NerDataSet( os.path.join(NER_DATASET_DIR, "validation.txt"), self.bert_embedder, self.ner_label_transer)
         valid_loader = DataLoader(valid_ds, batch_size=self.ner.config['train_config']['batch_size'], shuffle=False)
-        f1, acc, report = validate_ner(self.ner, valid_loader)
-        self.ner.valid_report = report
-        print(f'f1 score:{f1}, acc:{acc}')
-        print(report)
-        return f1, acc
+        report, report_text = validate_ner(self.ner, valid_loader)
+        self.ner.valid_report = report_text
+        self.ner.report['validation'] = report
+        print(report_text)
+        return report
     
     def ner_task(self, sentence: str):
         r""" 用 ner 模型作一次实体识别，返回标签序列 """

@@ -20,13 +20,10 @@ class BertEmbedder(object):
         r""" 非 data_loader 加载的时候（单个句子判断），设置 batch 为 True """
         if seq_len is None: seq_len = self.seq_len
         # perData = self.tokenizer(sentence, return_offsets_mapping=True, max_length=self.seq_len, truncation=True)
-        perData = self.tokenizer(sentence, padding='max_length', max_length=seq_len, truncation=True)
+        perData = self.tokenizer(sentence, padding='max_length', max_length=seq_len, truncation=True, return_offsets_mapping=True)
         # self.data.append({ key: Tensor(perData[key]) for key in perData })
         result = {}
         for key in perData:
-            if len(perData[key]) > seq_len:
-                print(f'err: { sentence }')
-                assert(True)
             if batch:
                 result[key] = tensor([perData[key]], dtype=long)
             else:

@@ -1,7 +1,7 @@
 from torch import nn, Tensor
 import torch
 from torchcrf import CRF
-from transformers import BertModel, logging as trans_loger
+from transformers import BertModel, logging as trans_loger, BertConfig
 import os
 import json
 
@@ -24,8 +24,9 @@ class NerModel(nn.Module):
         self.config = config
         self.name = name # 存储模型时文件夹名字即为此字符串
         self.dummpy_param = nn.Parameter(torch.empty(0), requires_grad=False) # 方便用于定位device
-        self.valid_report = None # validation报告
+        self.valid_report = None # validation报告，文本
         self.description = None # 关于模型的一段描述
+        self.report = {} # 报告合集，可以包含valid报告和test报告
 
         parms_config : dict = config['model_parms']
         self.seq_len            = parms_config['seq_len']
@@ -44,7 +45,7 @@ class NerModel(nn.Module):
         
         # bert输出句子特征的Tensor大小
         self.bert_hidden_size = self.bert.config.hidden_size # class : BertConfig
-        if self.bert.config.max_length < self.seq_len:
+        if self.bert.config.max_position_embeddings < self.seq_len:
             print("[Warning] model input sequence length bigger than bert max input length in NerModel")
         
         trans_loger.set_verbosity_warning() # 重新启用警告打印
@@ -109,7 +110,7 @@ class NerModel(nn.Module):
                 fp.write( str(self.valid_report) )
         if self.description is not None:
             with open(os.path.join(model_path, "description.txt"), 'w', encoding='UTF-8') as fp:
-                fp.write( str(self.valid_report) )
+                fp.write( str(self.description) )
 
     def load(self, save_dir: str = default_save_dir):
         r"""
