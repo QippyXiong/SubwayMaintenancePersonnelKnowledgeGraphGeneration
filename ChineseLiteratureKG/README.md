@@ -33,7 +33,7 @@ from controller import Controller
 
 if __name__ == '__main__':
     controller = Controller()
-    controller.init_ner() # 初始化ner模型，embedder
+    controller.init_ner() # 初始化ner模型，embedder，参数为 config/ner_config.json 中的参数
     controller.ner.name = 'ner-albert-bilstm-crf_v0.1' # 模型的名字，保存的时候文件夹名字就是这个
     controller.ner.description = '尝试albert微调' # 试过了，结果不太好
     controller.train_ner() # 训练模型
