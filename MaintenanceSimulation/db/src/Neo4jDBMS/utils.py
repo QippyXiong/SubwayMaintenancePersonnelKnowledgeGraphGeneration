@@ -1,4 +1,4 @@
-from __init__ import DataBaseManager
+from .__init__ import DataBaseManager
 
 def clearClasses(manager: DataBaseManager, class_name: str = "类型"):
     query = f'''
@@ -53,15 +53,4 @@ def importOutlineClassFile(manager: DataBaseManager, file_path: str, class_name:
         '''
         manager.execute_query(query)
 
-
-if __name__ == '__main__':
-    import os
-    current_dir = os.path.dirname(__file__)
-    print(current_dir)
-    project_dir = ''.join([ item + os.path.sep for item in current_dir.split(os.path.sep)[:-4]]) # ../../..
-    print(project_dir)
-    outline_file_path = os.path.join(project_dir, "MaintenanceSimulation", "kg", "人员能力知识图谱_实体结点分类.txt")
-    manager = DataBaseManager()
-    importOutlineClassFile(manager, outline_file_path)
-    manager.close()
     

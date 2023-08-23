@@ -3,6 +3,7 @@ from neo4j import GraphDatabase, Driver
 from Neo4jDBMS.datatype import *
 from typing import *
 from Neo4jDBMS.statement import Statement
+import json5 as json
 
 current_dir = os.path.dirname(__file__)
 # ../..
@@ -31,8 +32,10 @@ class DataBaseManager():
             with open(info, 'r', encoding='UTF-8') as fd:
                 db_info = json.load(fd)
             self.driver : Driver = GraphDatabase.driver(db_info["uri"], auth=tuple(db_info["auth"]))
+
         elif type(info) is dict:
             self.driver : Driver = GraphDatabase.driver(info["uri"], auth=tuple(info["auth"]))
+        
         else:
             raise TypeError(f"Unkown info type: { type(info) }")
         self.driver.verify_connectivity()

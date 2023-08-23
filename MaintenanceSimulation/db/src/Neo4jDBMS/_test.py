@@ -3,7 +3,7 @@ r"""
 """
 
 from os import path, sep as path_sep
-from __init__ import DataBaseManager
+from .__init__ import DataBaseManager
 import json
 
 current_dir = path.dirname(__file__)

@@ -72,9 +72,25 @@ class Controller:
         r""" 用 ner 模型作一次实体识别，返回标签序列 """
         self.bert_embedder.seq_len = self.ner.seq_len # 两个要相同，不然出事了
         r, _ = self.ner( self.bert_embedder(sentence, batch=True) )
+        result = []
+        begin_index = 1000
+        end_index = -1000
+        labels = self.ner_label_transer.id2label( r[0][1:-1] ) 
+        for index, tag in enumerate(labels):
+            if tag[0] == 'B':
+                begin_index = index
+            elif tag[0] == 'I':
+                end_index = index
+            elif tag[0] == 'O' and index == end_index + 1:
+                result.append(
+                    {
+                        'entity': sentence[begin_index : end_index + 1],
+                        'position': (begin_index, end_index)
+                    }
+                )
 
         # r[0]是由于batch_size=1，1:-1是除去开头[cls]和[sep]
-        return self.ner_label_transer.id2label( r[0][1:-1] ) 
+        return result
 
     def init_re(self):
         ...
