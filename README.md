@@ -1,80 +1,144 @@
 # SubwayMaintenancePersonnelKnowledgeGraphGeneration
 简称SMPKG
+### bert 模型依赖
 
-#### ChineseLiteratureKG
-第一个子项目，ChineseLiteratureKG，完成其内部的ner和re代码和KG设计
-ChineseLiteratureKG使用Chinese Literature数据集，你需要将数据集clone到data/dataset目录下
-数据集地址：[点此访问数据集](https://github.com/lancopku/Chinese-Literature-NER-RE-Dataset)
+目前直接复制文件夹名字去 hugging face 下载就可以
+### NER 模型
 
-#### MaintenanceSimulation
+#### 模型保存结构
 
-目前已经完成了Neo4jDBMS中DATABASE manager大体功能执行的编写
+    $(模型名称):
+    - ner_model.bin : pytorch模型文件
+    - params.json : 此模型初始化、训练的参数
+    - report.txt : 此模型在validation数据集上的测试结果
+#### 训练
 
-你可以通过创建DataManager来连接neo4j服务器
+对模型进行训练的一段代码如下（main.py中），使用的模型BERT-BiLSTM-CRF（目前就这一个），读取了config文件夹下的默认参数，采用的Chinese-Literature-NER-RE-Dataset数据集，训练完毕后需要关掉Figure
 
-如果想在ChineseLiteratureKG中使用Neo4jDBMS，可以使用如下代码
 ```python
-import sys
-import os
+from pathlib import Path
+from os import path
+from typing import Any
+import json5
+from threading import Thread
+import torch
+from sklearn.metrics import classification_report
 
-# current_dir 为代码文件所在文件夹
-current_dir = os.path.dirname(__file__)
-# 不应使用 .或者 ..来表示路径，容易导致代码兼容性差，因为python默认的相对目录是命令行调用python所在的目录，锁定文件目录以避免文件路径定位问题
-# project_dir应为文件夹ChineseLiterature，可以通过调节current_dir.split(os.path.sep)[:-1]中的-1来改变相对路径，比如-2就是上两级，-3是上三级，以此类推，此处等效于..，即此代码文件所在文件夹的上一层文件夹
-project_dir = ''.join([ item + os.path.sep for item in current_dir.split(os.path.sep)[:-1]]) # ..
+from ner_model import BertBilstmNerModel, BertBilstmNerModelParams, BertBilstmNerEmbedder
+from datasets import DgreData, DgreReDataset, CLNerDataSet
+from utils.animator import Animator
 
-DBMS_module_path = os.path.join(project_dir, "MaintenanceSimulation", "db", "src")
-sys.path.append(DBMS_module_path) # 添加模块路径
-print(DBMS_module_path) # 查看一下是不是正确路径
-from Neo4jDBMS import DataBaseManager # DataBaseManager即为管理类
-from neo4j import Record
-```
-`DataDataBaseManager`通过`execute_query`方法向`neo4j`数据库传送`Cypher`指令
-```python
-manager = DataBaseManager()
 
-# 搜索所有结点，并返回
-records, summary, keys = manager.execute_query(
-    f'''
-        MATCH (n) RETURN n
-    '''
+PROJ_DIR    = Path(path.dirname(__file__)).parent # 项目目录，这里是通过 src上一级目录锁定，
+MODEL_DIR   = PROJ_DIR.joinpath('models') # models文件夹
+DATASET_DIR = PROJ_DIR.joinpath('data', 'datasets')
+CONFIG_DIR  = PROJ_DIR.joinpath('config')
+
+
+with open( CONFIG_DIR.joinpath('ner_params.json'), 'r', encoding='UTF-8') as fp:
+    params_dict = json5.load(fp)
+params : BertBilstmNerModelParams = BertBilstmNerModelParams.from_dict(params_dict)
+net = BertBilstmNerModel(
+    params=params, 
+    bert_root_dir=MODEL_DIR.joinpath('bert')
 )
-# 访问搜索结果
-for record in records:
-    node = record['n']
-    for key in node.keys(): # 类似于dict，node.keys()包含了所有键值，如果你已知道key的值，可以直接访问
-        print(f'{key}:{ node[key] }')
-
+embedder = BertBilstmNerEmbedder(
+    bert_url=MODEL_DIR.joinpath('bert', params.hyper_params.bert), 
+    seq_len=params.hyper_params.seq_len
+)
+train_loader = DataLoader(
+    dataset=CLNerDataSet( DATASET_DIR.joinpath('Chinese-Literature-NER-RE-Dataset', 'ner', 'train.txt'), embedder=embedder),
+    batch_size=params.train_params.batch_size,
+    shuffle=True,
+    num_workers=2
+)
+ani = Animator('step', 'loss', x_lim=[0, len(train_loader)*params.train_params.epochs])
+task = lambda: BertBilstmNerModel.train_epochs(
+    net, 
+    train_loader, 
+    each_step_handler=lambda epoch, total_step, loss, pred, label: ani.add(total_step, loss)
+)
+t = Thread(target=task)
+t.start()
+ani.show()
+t.join()
+# 训练结束，开始测试
+valid_set = CLNerDataSet( DATASET_DIR.joinpath('Chinese-Literature-NER-RE-Dataset', 'ner', 'validation.txt'), embedder=embedder)
+valid_loader = DataLoader(
+    dataset=valid_set,
+    batch_size=net.params.train_params.batch_size,
+    shuffle=False,
+    num_workers=2
+)
+preds, targets = BertBilstmNerModel.valid(net, valid_loader)
+preds = [ valid_set.id2label(pred) for pred in preds ]
+targets = [ valid_set.id2label(target) for target in targets ]
+report_text = ner_report(targets, preds)
+net.set_report(report_text)
+net.save(MODEL_DIR.joinpath('ner'))
 ```
 
-也可以直接通过`manager`创建结点
-```python
-from Neo4jDBMS.datatype import * # 导入必要数据类型
-# 构造manager，连接数据库
-manager = DataBaseManager()
-# 创造一个结点
-handsome_boy = Entity()
-# 设置neo4j中结点类型为帅哥
-handsome_boy.class_ = Class("帅哥") # 不可直接赋值为 "帅哥"
-# 为这个结点添加属性
-handsome_boy.props["名字"] = "平如愿"
-handsome_boy.props["外貌"] = "帅啊"
-# 在数据库中创建这个结点
-manager.createEntity(handsome_boy)
+### RE模型
 
-# 关闭连接
-manager.close()
-```
-
-还没写好创建关系的方法，要使用cypher的话，一个参考是：
+#### 训练
 
 ```python
-query = f'''
-            MATCH (a:{ class_name1 }), (b:{ class_name2 })
-            WHERE a.{ props_key1 } = "{ props_value1 }" AND b.{ props_key2 } = "{ props_value2 }"
-            CREATE (a)-[:{ forward_relation }]->(b)
-            CREATE (b)-[:{ backward_relation }]->(a)
-        '''
-        # 可以只有一个CREATE或添加更多行CREATE
-manager.execute_query(query)
+
+
+from re_model import SoftmaxReModel, SoftmaxReModelParams, SoftmaxReEmbedder
+from datasets import DuIERelationDataSet as DuIEDataSet, DuIEData, DuIESchema
+from utils.animator import Animator
+
+
+# 配置静态资源文件路径
+PROJ_DIR    = Path(path.dirname(__file__)).parent # 项目目录，这里是通过 src上一级目录锁定，
+MODEL_DIR   = PROJ_DIR.joinpath('models') # models文件夹
+DATASET_DIR = PROJ_DIR.joinpath('data', 'datasets')
+CONFIG_DIR  = PROJ_DIR.joinpath('config')
+
+
+class DgreEncoder:
+    r""" dgre数据集的输出不能直接由embdder实现，所以构建这个类作为embdder """
+    def __init__(self, embdder: SoftmaxReEmbedder) -> None:
+        self.embdder = embdder
+        self.transer = DgreReLabelTranser()
+    
+    def __call__(self, data: DgreData) -> Any:
+        _data = self.embdder(data.text, data.labels[0], data.labels[1])
+        label = torch.tensor( self.transer.label2id(data.labels[2]), dtype=torch.long)
+        return _data, label
+
+# 读取默认参数文件
+with open( path.join(CONFIG_DIR, 're_params.json'), 'r', encoding='UTF-8' ) as fp:
+    defaut_params : SoftmaxReModelParams = SoftmaxReModelParams.from_dict( json5.load(fp) )
+net = SoftmaxReModel(params=defaut_params, bert_root_dir=str( MODEL_DIR.joinpath('bert') ))
+embedder = SoftmaxReEmbedder( MODEL_DIR.joinpath('bert', defaut_params.hyper_params.bert), defaut_params.hyper_params.seq_len )
+encoder = DgreEncoder(embedder)
+train_loader = DataLoader(
+    DgreReDataset( DATASET_DIR.joinpath('dgre', 're_data', 'train.txt'), embedder=encoder),
+    batch_size=net.params.train_params.batch_size,
+    shuffle=True,
+    num_workers=2
+)
+ani = Animator('step', 'loss', x_lim=[0, len(train_loader) * net.params.train_params.num_epochs])
+task = lambda: SoftmaxReModel.train_epochs( 
+    net, 
+    train_loader, 
+    each_step_callback= lambda epoch, total_step, loss, pred, label: ani.add(total_step, loss)
+)
+t = Thread(target=task)
+t.start()
+ani.show()
+t.join()
+# 验证模型
+valid_loader = DataLoader( 
+    DgreReDataset( DATASET_DIR.joinpath('dgre', 're_data', 'dev.txt'), encoder=encoder),
+    batch_size=net.params.train_params.batch_size
+)
+preds, targets = SoftmaxReModel.validate( net, valid_loader=valid_loader)
+report = classification_report(targets, preds)
+net.set_report(report)
+# 保存模型
+net.params.name = 'dgre_re v0.2'
+net.save( str( MODEL_DIR.joinpath('re') ) )
 ```

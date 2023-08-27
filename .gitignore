@@ -1,6 +1,6 @@
 *.log
 data/generator/OPENAI_APIKEY.txt
-data/dataset/*
+data/datasets/*
 data/database/*
 __pycache__
 *.bin
@@ -8,5 +8,5 @@ __pycache__
 .idea
 .vs
 db.json
-*/model/ner/*
-*/model/re/*
+models/ner/*
+models/re/*

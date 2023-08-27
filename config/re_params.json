@@ -1,0 +1,21 @@
+{
+    "hyper_params": {
+        "bert"              : "chinese-bert-wwm-ext",
+        "seq_len"           : 250, // 参数包括了两个实体对象联合的长度和句子长度，当然还有CLS，SEP
+        "hidden_size"       : 128, // 可以是数组，如果是数组就代表多个隐藏层，每个隐藏层的大小
+        "num_labels"        : 5    // 输出的类型数量，duie数据集的类型最多有49种，不在label范围内的数据会被舍弃掉
+    },
+    "train_params":  {
+        "batch_size"        : 6,
+        "num_epochs"        : 4,    // 数据集较小，epoch不够无法收敛
+        "bert_lr"           : 3e-6,
+        "linear_lr"         : 3e-6, // 偏小，要是陷入局部解就改大点
+        "eps"               : 1e-8,
+        "bert_decay"        : 0.01,
+        "linear_decay"      : 0.01,
+        "warm_up_proportion": 0.01,
+        "drop_out"          : 0.01
+    },
+    "name": "test",
+    "dataset": "dgre" // 在哪个数据集上跑的
+}
