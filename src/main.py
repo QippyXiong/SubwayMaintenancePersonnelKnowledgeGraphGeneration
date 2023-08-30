@@ -69,6 +69,9 @@ def train_re():
         batch_size=net.params.train_params.batch_size
     )
     preds, targets = SoftmaxReModel.validate( net, valid_loader=valid_loader)
+    transer = DgreReLabelTranser()
+    preds = [ transer.id2label(pred) for pred in preds]
+    targets = [ transer.id2label(target) for target in targets ]
     report = classification_report(targets, preds)
     net.set_report(report)
     # 保存模型
