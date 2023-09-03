@@ -1,0 +1,25 @@
+{
+    "hyper_params": {
+        "bert": "chinese-bert-wwm-ext",
+        "num_labels": 0, // None或者0的话就自动根据数据集标签数赋值
+        "seq_len": 200,
+        "lstm_hidden_size": 128,
+        "lstm_hidden_layers": 1
+    },
+    "train_params": {
+        "batch_size": 8,
+        "epochs": 1,
+        "warm_up_proportion": 0.01,
+        "bert_lr": 3e-05,
+        "bert_decay": 0.01,
+        "crf_lr": 0.003,
+        "crf_decay": 0.0,
+        "other_lr": 3e-05,
+        "other_decay": 0.01,
+        "eps": 1e-05,
+        "drop_out": 0
+    },
+    "name": "bert-bilstm-crf_v0.1",
+    "description": "",
+    "dataset": "dgre"
+}

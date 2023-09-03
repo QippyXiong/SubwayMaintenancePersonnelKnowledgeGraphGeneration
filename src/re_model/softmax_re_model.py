@@ -14,7 +14,7 @@ import torch
 
 @dataclass_json
 @dataclass
-class ReModelParams:
+class SoftmaxReModelParams:
     r"""
     定义模型config
 
@@ -66,7 +66,7 @@ class ReModelParams:
     dataset: str
 
 
-class ReEmbedder:
+class SoftmaxReEmbedder:
     r""" 负责将文字输入（实体名称和句子）转换为模型的输入 """
     def __init__(self, bert_url, seq_len) -> None:
         self.tokenizer = AutoTokenizer.from_pretrained(bert_url)
@@ -95,7 +95,7 @@ class ReEmbedder:
         data['attention_mask'] = data['attention_mask'].bool() # attention_mask is byte type
         return data
 
-class ReModel(nn.Module):
+class SoftmaxReModel(nn.Module):
     r"""
         普普通通关系抽取，用的 Bert + SoftMax
         [cls]输入句子[sep]主体[sep]客体[sep] 经过Bert处理后得到特征向量，然后作 SoftMax 回归
@@ -116,7 +116,7 @@ class ReModel(nn.Module):
             6. bert_decay
             7. linear_decay
     """
-    def __init__(self, params: ReModelParams, bert_root_dir: str, *args, **kwargs) -> None:
+    def __init__(self, params: SoftmaxReModelParams, bert_root_dir: str, *args, **kwargs) -> None:
         r"""
         Args:
 
@@ -126,11 +126,11 @@ class ReModel(nn.Module):
         bert_url = path.join(bert_root_dir, params.hyper_params.bert)
         print(bert_url)
 
-        # trans_loger.set_verbosity_error()
+        trans_loger.set_verbosity_error()
         self.bert = BertModel.from_pretrained(bert_url)
         self.bert_config = BertConfig.from_pretrained(bert_url)
 
-        # trans_loger.set_verbosity_warning()
+        trans_loger.set_verbosity_warning()
 
         self.sequential = nn.Sequential()
         self.params = params
@@ -167,8 +167,8 @@ class ReModel(nn.Module):
     
 
     def save(self, model_dir: str) -> None:
-        r""" 在 model_dir 目录下保存模型，保存的文件夹即为模型的名字 params.name """
-        save_dir = path.join(model_dir, self.params.name)
+        r""" 在 model_dir 文件夹下保存模型 """
+        save_dir = path.join(model_dir)
 
         if not path.exists(save_dir): os.makedirs(save_dir)
 
@@ -180,24 +180,22 @@ class ReModel(nn.Module):
 
         for name, value in save_list:
             with open( path.join(save_dir, name), "w", encoding="UTF-8" ) as fp:
-                fp.write( value )
+                if value: fp.write( value )
         
-        torchsave( self.state_dict(), path.join(save_dir, 're_model.bin') )
+        torchsave( self.state_dict(), path.join(save_dir, 'bert_softmax_re_model.bin') )
 
     @staticmethod
-    def load(model_dir: str, bert_root_dir: str, name: str):
+    def load(model_dir: str, bert_root_dir: str):
         r""" 返回加载的模型 """
-        save_dir = path.join(model_dir, name)
-
-        params = None
+        save_dir = path.join(model_dir)
         with open( path.join(save_dir, 'params.json'), 'r', encoding='UTF-8' ) as fp:
-            params = ReModelParams.from_json( fp.read().strip() )
+            params = SoftmaxReModelParams.from_json( fp.read().strip() )
         
-        model = ReModel(params, bert_root_dir)
+        model = SoftmaxReModel(params, bert_root_dir)
         with open( path.join(save_dir, 'report.txt'), 'r', encoding='UTF-8' ) as fp:
             model.set_report( fp.read() )
 
-        model.load_state_dict( torchload( path.join(save_dir, 're_model.bin') ) )
+        model.load_state_dict( torchload( path.join(save_dir, 'bert_softmax_re_model.bin') ) )
 
         return model
 
@@ -228,7 +226,7 @@ class ReModel(nn.Module):
             train_loader: train loader
             each_step_callback: (epoch, step, loss, pred, label)
         """
-        tps : ReModelParams.TrainParams = net.params.train_params
+        tps : SoftmaxReModelParams.TrainParams = net.params.train_params
         loss_func = nn.CrossEntropyLoss()
 
         loss_func.to(device=device)

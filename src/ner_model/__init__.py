@@ -3,6 +3,6 @@ r"""
 """
 
 # 转义名字
-from .bert_bilstm_ner_model import NerModel as BertBilstmNerModel
-from .bert_bilstm_ner_model import NerModelParams as BertBilstmNerModelParams
-from .bert_bilstm_ner_model import NerEmbedder as BertBilstmNerEmbedder
+from .bert_bilstm_ner_model import BertBilstmNerModel
+from .bert_bilstm_ner_model import BertBilstmNerModelParams
+from .bert_bilstm_ner_model import BertBilstmNerEmbedder

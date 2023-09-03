@@ -84,18 +84,18 @@ class NerLabelTranser():
     def num_labels(self):
         return len(self.tag_labels)
 
-    def load(self, config_file_path: str) -> None:
-        with open(config_file_path, 'r', encoding='UTF-8') as fp:
-            obj = json.load(fp)
-            self.tag_label_dict = obj['tag_label_dict']
-            self.tag_labels = obj['tag_labels']
+    # def load(self, config_file_path: str) -> None:
+    #     with open(config_file_path, 'r', encoding='UTF-8') as fp:
+    #         obj = json.load(fp)
+    #         self.tag_label_dict = obj['tag_label_dict']
+    #         self.tag_labels = obj['tag_labels']
 
-    def save(self, config_file_path: str) -> None:
-        with open(config_file_path, 'w', encoding='UTF-8') as fp:
-            json.dump({
-                'tag_label_dict': self.tag_label_dict,
-                'tag_labels': self.tag_labels
-            }, fp)
+    # def save(self, config_file_path: str) -> None:
+    #     with open(config_file_path, 'w', encoding='UTF-8') as fp:
+    #         json.dump({
+    #             'tag_label_dict': self.tag_label_dict,
+    #             'tag_labels': self.tag_labels
+    #         }, fp)
     
 
 class SentenceDistributionStatics(dict):
@@ -125,17 +125,17 @@ class SentenceDistributionStatics(dict):
 class NerDataSet(Dataset):
     r""" 命名实体识别数据集，数据集构建时不对齐句子长度 """
 
-    def __init__(self, file_path : str, embedder: Callable[[str], Any] = None) -> None:
+    def __init__(self, file_path : str, seq_len: int, encoder: Callable[[str, list[str]], Any] = None) -> None:
         r""" 
         Args:
             file_path: 加载文件路径
-            embedder: `__getitem__` 方法会调用embedder，若有embedder返回值即为embdder的值
+            encoder: `__getitem__` 方法会调用encoder，将原始输入输入encoder，然后返回encoder的返回值
         """
         self.transer = NerLabelTranser() # 转换器，存储了标签字典
 
         self.data = []
         self.label = []
-        self.embedder = embedder
+        self.encoder = encoder
         self.distrib = SentenceDistributionStatics()
         sentence = '' # 单个句子
         tagseq = [] # 单个句子对应的标签序列
@@ -149,21 +149,8 @@ class NerDataSet(Dataset):
                     tag = tag.replace('_', '-') # 此数据集标号有问题
                     tagseq.append(tag[:-1])  # 除去末尾的回车
                 else:
-                    # fast tokenizer can turncate itself
-                    tag_id_seq = []
-
-                    tag_id_seq = self.transer.label2id(tagseq)
-
-                    if len(tag_id_seq) > embedder.seq_len - 2: # 对齐label
-                        tag_id_seq = tag_id_seq[:embedder.seq_len - 2]
-                    tag_id_seq = [0] + tag_id_seq # 起始是cls token
-                    tag_id_seq += [0] * (embedder.seq_len - len(tag_id_seq)) # padding
                     self.data.append(sentence)
-                    self.label.append(tensor(tag_id_seq, dtype=long))
-
-                    # 统计句子长度分布
-                    self.distrib.count(len(sentence))
-
+                    self.label.append(tagseq)
                     sentence = ''
                     tagseq = []
 
@@ -175,10 +162,10 @@ class NerDataSet(Dataset):
         有embedder时返回embedder处理后的数据，没有就直接返回数据
 
         Returns:
-            `embedder(sentence), label` or `sentence, label`
+            `encoder(sentence), label` or `sentence, label`
         """
-        if self.embedder is not None:
-            return self.embedder(self.data[index]), self.label[index]
+        if self.encoder is not None:
+            return self.encoder(self.data[index], self.label[index])
         else:
             return self.data[index], self.label[index]
 

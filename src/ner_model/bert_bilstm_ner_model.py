@@ -16,13 +16,13 @@ from tqdm import tqdm
 
 @dataclass_json
 @dataclass
-class NerModelParams:
+class BertBilstmNerModelParams:
     r""" 模型参数集合 """
     @dataclass_json
     @dataclass
     class TrainParams:
         batch_size          : int  
-        epochs              : int  
+        num_epochs          : int  
         warm_up_proportion  : float
         bert_lr             : float
         bert_decay          : float
@@ -49,7 +49,7 @@ class NerModelParams:
     dataset: str = '' # 模型训练用数据集的名字
 
 
-class NerEmbedder(object):
+class BertBilstmNerEmbedder(object):
     r""" 用于将单个句子处理成输入数据 """
     def __init__(self, bert_url: str, seq_len: Optional[int] = None) -> None:
         self.tokenizer = AutoTokenizer.from_pretrained(bert_url)
@@ -73,13 +73,13 @@ class NerEmbedder(object):
         return result
 
 
-class NerModel(nn.Module):
+class BertBilstmNerModel(nn.Module):
     r""" 
     用于命名体识别的模型，采用Bert + BiLSTM + CRF，通过save，load函数来存储加载模型
     此模型暂时还不支持Albert，后续会添加支持
     """
 
-    def __init__(self, params: NerModelParams, bert_root_dir, *args, **kwargs) -> None:
+    def __init__(self, params: BertBilstmNerModelParams, bert_root_dir, *args, **kwargs) -> None:
         r"""
         Args:
             params: Model Parameters
@@ -150,10 +150,10 @@ class NerModel(nn.Module):
             save_dir: 存储文件夹目录，默认为model文件夹下
             会根据名字属性 name 创建文件夹，
         """
-        model_path = os.path.join(save_dir, self.params.name)
+        model_path = os.path.join(save_dir)
         if not os.path.exists(model_path):
             os.makedirs(model_path)
-        torch.save(self.state_dict(), os.path.join(model_path, "ner_model.bin"))
+        torch.save(self.state_dict(), os.path.join(model_path, "bert_bilstm_crf_ner_model.bin"))
         with open(os.path.join(model_path, "params.json"), 'w', encoding='UTF-8') as fp:
             params_json = self.params.to_json()
             fp.write(params_json)
@@ -169,9 +169,9 @@ class NerModel(nn.Module):
             raise FileNotFoundError(f'[{__package__}:Error]missing params.json file, check if this is the real model directory')
         with open(os.path.join(model_dir, "params.json"), 'r', encoding='UTF-8') as fp:
             params = json.load(fp)
-        params = NerModelParams.from_dict(params)
-        ner = NerModel(params, bert_root_dir)
-        ner.load_state_dict(torch.load( os.path.join(model_dir, "ner_model.bin") ))
+        params = BertBilstmNerModelParams.from_dict(params)
+        ner = BertBilstmNerModel(params, bert_root_dir)
+        ner.load_state_dict(torch.load( os.path.join(model_dir, "bert_bilstm_crf_ner_model.bin") ))
         return ner
     
 
@@ -180,7 +180,7 @@ class NerModel(nn.Module):
         net, 
         train_loader: Sequence, 
         device = 'cuda:0',
-        each_step_handler : Callable[[int, int, float, list[list[int]], list[list[int]] ], None] = None
+        each_step_callback : Callable[[int, int, float, list[list[int]], list[list[int]] ], None] = None
     ) -> None:
         r""" 
         train according to params.train_params
@@ -188,7 +188,7 @@ class NerModel(nn.Module):
         Args:
             train_loader: should implement `__len__` method, item return `( {'input_ids，'attention_mask'，'token_type_ids'}, label )`, all is `Tensor`
             device: cpu or gpu
-            each_step_handler: `(epoch, total_step, loss, pred, label)->None`, take care of batch size
+            each_step_callback: `(epoch, total_step, loss, pred, label)->None`, take care of batch size
         """
 
         # deal parameters
@@ -201,7 +201,7 @@ class NerModel(nn.Module):
         # print([name for name, param in other_params])
         no_decay = ( 'bias', 'layerNorm' ) # name of no decay params
 
-        tps: NerModelParams.TrainParams = net.params.train_params
+        tps = net.params.train_params
         grouped_params = [
             { # bert with decay
                 'params': [ param for name, param in bert_params if not any(nd in name for nd in no_decay) ],
@@ -238,11 +238,11 @@ class NerModel(nn.Module):
         ]
 
         optimizer = AdamW(params=grouped_params, lr=tps.other_lr, eps=tps.eps)
-        total_steps = tps.epochs * len(train_loader)
+        total_steps = tps.num_epochs * len(train_loader)
         scheduler = get_linear_schedule_with_warmup(optimizer, int(total_steps * tps.warm_up_proportion), total_steps)
 
         net.to(device)
-        for epoch in range(1, tps.epochs + 1):
+        for epoch in range(1, tps.num_epochs + 1):
             net.train()
             iteration = tqdm(train_loader)
             for input, label in iteration:
@@ -265,7 +265,7 @@ class NerModel(nn.Module):
                 iteration.set_description('train(loss %3.3f)'% loss.item())
 
                 # (epoch, step, loss, pred: list (batch_size, ), label: list (batch_size, ))
-                each_step_handler(epoch, (epoch-1)*len(iteration) + iteration.n, loss.item(), pred, label.tolist())
+                each_step_callback(epoch, (epoch-1)*len(iteration) + iteration.n, loss.item(), pred, label.tolist())
 
     
     @staticmethod
