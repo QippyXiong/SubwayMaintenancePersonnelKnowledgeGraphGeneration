@@ -38,7 +38,7 @@ class DuIEData:
         predicate: str
         object_type: dict # key '@value' is the name of object_type
         subject_type: str
-        object: dict # key '@value' is the value of objet
+        object: dict # key '@value' is the value of object
         subject: str
 
     text: str
@@ -83,8 +83,8 @@ class DuIEReLabelTranser:
         return self.labels
 
 
-class DuIERelationDataSet(Dataset):
-    r""" 数据集 DuIE2.0，此数据集类不会将整个文件读入内存 """
+class DuIEReDataSet(Dataset):
+    r""" 数据集 DuIE2.0 """
 
     def __init__(self, file_path: str, encoder: Callable[[str, DuIEData.SpoData], Any] = None, max_length: int = None) -> None:
         r"""
@@ -94,7 +94,6 @@ class DuIERelationDataSet(Dataset):
         """
         super().__init__()
         self.encoder = encoder
-        self.dataset_type = encoder
         self.data = []
         self.transer = DuIEReLabelTranser(max_length)
         with open(file_path, 'r', encoding='UTF-8') as fp:
@@ -102,8 +101,13 @@ class DuIERelationDataSet(Dataset):
             for line in tqdm(lines, f'reading data'):
                 data: DuIEData = DuIEData.from_json(line)
                 for spo in data.spo_list:
-                    if spo.predicate in self.transer.get_labels():
-                        self.data.append((data.text, spo))
+                    # 避免subject == '' or object == ''
+                    if spo.subject and spo.object['@value']:
+                        if max_length:
+                            if spo.predicate in self.transer.labels():
+                                self.data.append((data.text, spo))
+                        else:
+                            self.data.append((data.text, spo))
         return
     
     def __len__(self) -> int:
@@ -129,4 +133,52 @@ class DuIERelationDataSet(Dataset):
     def close(self):
         if hasattr(self, 'fp'): self.fp.close()
         if self.data: del self.data # call gc
-        
+
+
+class DuIENerDataset(Dataset):
+
+    def __init__(self, file_path: str, encoder: Callable[[DuIEData], Any] = None) -> None:
+        super().__init__()
+        self.encoder = encoder
+        with open(file_path, 'r', encoding='UTF-8') as fp:
+            self.data = fp.readlines()
+
+
+    def __len__(self):
+        return len(self.data)
+    
+    
+    def __getitem__(self, index) -> Union[DuIEData, Any]:
+        line_data = DuIEData.from_json(self.data[index])
+        if self.encoder:
+            return self.encoder(line_data)
+        return line_data
+
+
+
+class DuIENerLabelTranser:
+    
+    def __init__(self) -> None:
+        self.raw_labels = ['地点', '奖项', '图书作品', 'Date', 'Text', ' 人物', '企业/品牌', '歌曲', '气候', '景点', '作品', '人物', '娱乐人物', '音乐专辑', '语言', '企业', '电视综艺', '历史人物', 'Number', '影视作品', '文学作品', '国家', '机构', '学校', '城市', '学科专业', '行政区']
+        self.labels = ['O']
+        for label in self.raw_labels:
+            self.labels.append('B-' + label)
+            self.labels.append('I-' + label)
+        self.label_dict = { label: i for i, label in enumerate(self.labels) }
+
+    def id2label(self, ids: Union[int, list[int]]) -> Union[str, list[str]]:
+        if isinstance(ids, Iterable):
+            return [ self.labels[i] for i in ids ]
+        return self.labels[ids]
+    
+    def label2id(self, labels: Union[str, list[str]]) -> Union[int, list[int]]:
+        if isinstance(labels, str): # 此处不可用Iterable来判断，因为str也是可以遍历的
+            return self.label_dict[labels]
+        return [ self.label_dict[i] for i in labels]
+
+    def __len__(self):
+        return len(self.labels)
+
+    def get_labels(self):
+        return self.labels
+    

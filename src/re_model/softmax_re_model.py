@@ -124,7 +124,6 @@ class SoftmaxReModel(nn.Module):
         super().__init__(*args, **kwargs)
 
         bert_url = path.join(bert_root_dir, params.hyper_params.bert)
-        print(bert_url)
 
         trans_loger.set_verbosity_error()
         self.bert = BertModel.from_pretrained(bert_url)
@@ -300,7 +299,7 @@ class SoftmaxReModel(nn.Module):
     
 
     @staticmethod
-    def validate(
+    def valid(
         net,
         valid_loader,
         device = 'cuda:0',
@@ -323,7 +322,7 @@ class SoftmaxReModel(nn.Module):
                 iteration.set_description('validating(loss: %3.3f)'% loss_value)
 
                 for i in range(output.shape[0]): # batch size loop
-                    preds.append( argmax(output).item() )
+                    preds.append( argmax(output[i]).item() )
                     targets.append( label[i].item() )
             
         return preds, targets

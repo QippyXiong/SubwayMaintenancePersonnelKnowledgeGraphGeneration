@@ -114,5 +114,8 @@ class Animator():
 
     def ioff(self):
         plt.ioff()
+
+    def close(self):
+        plt.close(self.fig)
     
     

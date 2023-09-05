@@ -7,8 +7,8 @@
         "lstm_hidden_layers": 1
     },
     "train_params": {
-        "batch_size": 8,
-        "epochs": 1,
+        "batch_size": 6,
+        "num_epochs": 1,
         "warm_up_proportion": 0.01,
         "bert_lr": 3e-05,
         "bert_decay": 0.01,
@@ -19,7 +19,7 @@
         "eps": 1e-05,
         "drop_out": 0
     },
-    "name": "bert-bilstm-crf_v0.1",
-    "description": "",
-    "dataset": "dgre"
+    "name": "bert-bilstm-crf-duie_v0.1",
+    "description": "在DuIE数据集上的测试",
+    "dataset": "DuIE2.0"
 }

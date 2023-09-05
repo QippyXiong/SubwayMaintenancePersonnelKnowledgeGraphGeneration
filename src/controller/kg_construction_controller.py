@@ -4,8 +4,10 @@ r"""
 
 from pathlib import Path
 import json5
-from torch import Tensor
+from torch import Tensor, argmax
 from torch.utils.data import DataLoader
+from sklearn.metrics import classification_report as re_valid_report
+from seqeval.metrics import classification_report as ner_valid_report
 
 from .contruction_model_types import *
 
@@ -55,8 +57,9 @@ class KGConstructionController:
                 embedder=embedder,
             )
         )
+        return len(self.ner_model_list) - 1
 
-    def init_ner_from_params(self, params: NerModelParamTypes):
+    def init_ner_from_params(self, params: NerModelParamTypes) -> int:
 
         if isinstance(params, BertBilstmNerModelParams):
             if not bool(params.hyper_params.num_labels):
@@ -69,19 +72,19 @@ class KGConstructionController:
                 bert_url= self.BERT_DIR.joinpath(params.hyper_params.bert),
                 seq_len=params.hyper_params.seq_len
             )
-            self.add_ner(net, embedder=embedder)
+            return self.add_ner(net, embedder=embedder)
         
         else:
 
             raise TypeError('NO SUCH NER TYPE PARAMS')
         
-    def init_ner(self, type: NerTypes)->None:
+    def init_ner(self, type: NerTypes)->int:
         r"""
         从默认参数文件中加载ner模型
         """
-        self.init_ner_from_default_file(type)
+        return self.init_ner_from_default_file(type)
 
-    def init_ner_from_default_file(self, type: NerTypes)->None:
+    def init_ner_from_default_file(self, type: NerTypes)->int:
         r"""
         从默认参数文件中加载ner模型
         """
@@ -92,21 +95,46 @@ class KGConstructionController:
         with open( PARAM_DIR.joinpath(param_file_name), 'r', encoding='UTF-8') as fp:
             params = param_type.from_dict( json5.load( fp=fp ))
   
-        self.init_ner_from_params(params)
+        return self.init_ner_from_params(params)
         
-    def add_re(self, net, type = None, embedder = None, dataset = None)->None:
+
+    def add_re(self, net, embedder = None)->int:
         self.re_model_list.append(
             ReModelComposition(
                 model=net,
                 embedder=embedder,
             )
         )
+        return len(self.re_model_list) - 1
+
+
+    def init_re_from_default_file(self, type: ReTypes) -> int:
+        
+        PARAM_DIR = self.CONFIG_DIR.joinpath('re_model_params')
+
+        param_file_names = {
+            ReTypes.BERT_SOFTMAX: ('bert_softmax.json', SoftmaxReModelParams )
+        }
+
+        param_file_name, param_type = param_file_names[type]
+
+        with open( PARAM_DIR.joinpath(param_file_name), 'r', encoding='UTF-8') as fp:
+            params = param_type.from_dict( json5.load( fp=fp ))
+        
+        return self.init_re_from_params( params )
+
+
+    def init_re(self, type: ReTypes) -> int:
+        return self.init_re_from_default_file(type)
     
+
     def remove_ner(self, index: int) -> None:
         del self.ner_model_list[index]
 
+
     def remove_re(self, index: int) -> None:
         del self.re_model_list[index]
+
 
     def init_re_from_params(self, params: ReModelParamTypes):
 
@@ -121,19 +149,11 @@ class KGConstructionController:
                 bert_url= self.BERT_DIR.joinpath(params.hyper_params.bert),
                 seq_len=params.hyper_params.seq_len
             )
-            self.add_re(net, embedder=embedder)
+            return self.add_re(net, embedder=embedder)
         
         else:
             
             raise TypeError('NO SUCH RE TYPE PARAMS')
-    
-    def init_re_from_default_file(self, type: ReTypes) -> None:
-        PARAM_DIR = self.CONFIG_DIR.joinpath('re_model_params')
-        param_file_name, param_type = get_default_params_file_name(type)
-        with open( PARAM_DIR.joinpath(param_file_name), 'r', encoding='UTF-8') as fp:
-            params = param_type.from_dict( json5.load( fp=fp ))
-        
-        self.init_re_from_params(params)
     
     @staticmethod
     def get_dataset_ner_label_transer(dataset_name: str) -> Union[CLNerLabelTranser, Any]:
@@ -195,6 +215,17 @@ class KGConstructionController:
                 return ds
             # end dataset dgre
             
+            elif model.params.dataset == 'DuIE2.0':
+                mapping = {
+                    'train':'duie_train.json',
+                    'valid':'duie_dev.json',
+                    'test':'duie_test2.json'
+                }
+                ds = DuIENerDataset(
+                    file_path=dataset_path.joinpath(mapping[dataset_type]),
+                    encoder=NerDuIEToBertBilstmEncoder(composition.embedder)
+                )
+                return ds
             else:
                 raise NameError('no such dataset ner implemented')
         # end BertBilstmNerModel
@@ -241,6 +272,18 @@ class KGConstructionController:
                 )
             # end dataset dgre
 
+            if dataset_name == 'DuIE2.0':
+                mapping = {
+                    'train': 'duie_train.json',
+                    'valid': 'duie_dev.json',
+                    'test': 'duie_test2.json'
+                }
+                return DuIEReDataSet(
+                    dataset_path.joinpath(mapping[dataset_type]),
+                    encoder = ReDuIEToBertSoftmaxEncoder(embedder=composition.embedder)
+                )
+            # end dataset duie
+
             else:
                 raise NameError('no such dataset ner implemented')
 
@@ -251,28 +294,18 @@ class KGConstructionController:
         return DataLoader(
             dataset=ds,
             batch_size=composition.model.params.train_params.batch_size,
-            shuffle=False,
+            shuffle=True,
             num_workers=num_workers
         )
     
-
-    def init_re_from_default_file(self, type: ReTypes) -> None:
-        
-        PARAM_DIR = self.CONFIG_DIR.joinpath('re_model_params')
-
-        param_file_names = {
-            ReTypes.BERT_SOFTMAX: ('bert_softmax.json', SoftmaxReModelParams )
-        }
-
-        param_file_name, param_type = param_file_names[type]
-
-        with open( PARAM_DIR.joinpath(param_file_name), 'r', encoding='UTF-8') as fp:
-            params = param_type.from_dict( json5.load( fp=fp ))
-        
-        self.init_re_from_params( params )
-
-    def init_re(self, type: ReTypes) -> None:
-        self.init_re_from_default_file(type)
+    def create_re_valid_loader(self, composition: ReModelComposition, num_workers = 0) -> DataLoader:
+        ds = self.create_re_dataset(composition, 'valid')
+        return DataLoader(
+            dataset=ds,
+            batch_size=composition.model.params.train_params.batch_size,
+            shuffle=True,
+            num_workers=num_workers
+        )
 
     @staticmethod
     def get_dataset_ner_label_transer(dataset_name: str):
@@ -287,9 +320,8 @@ class KGConstructionController:
             model_in = composition.embedder(sentence, True)
             device = next(composition.model.parameters()).device
             # 转移到与model相同的设备中去
-            if isinstance(model_in, dict):
-                for key in model_in.keys():
-                    model_in[key] = model_in[key].to(device)
+            for key in model_in.keys():
+                model_in[key] = model_in[key].to(device)
 
             r, _ = composition.model(
                 input_ids=model_in['input_ids'],
@@ -298,7 +330,7 @@ class KGConstructionController:
                 )
             if isinstance(r, Tensor):
                 r = r.tolist()
-            return transer.id2label(r[0])
+            return transer.id2label(r[0])[1:]
         # elif ...
         else:
             raise TypeError('unkown ner model type')
@@ -310,13 +342,17 @@ class KGConstructionController:
         model = composition.model
 
         if isinstance(model, ReTypes.BERT_SOFTMAX.value):
-            transer = self.get_dataset_re_label_transer(composition.model.params.dataset)
+            transer = self.get_dataset_re_label_transer(model.params.dataset)
             model_in = composition.embedder(sentence, subject, object, True)
-            pred = model.forward(
+            device = next(model.parameters()).device
+            # 转移到与model相同的设备中去
+            for key in model_in.keys():
+                model_in[key] = model_in[key].to(device)
+            pred = argmax(model.forward(
                 input_ids=model_in['input_ids'],
-                attention_mask=model_in['attention_mask'],
+                attention_mask=model_in['attention_mask'].bool(),
                 token_type_ids=model_in['token_type_ids']
-            )
+            )).item()
             return transer.id2label(pred)
         else:
             raise TypeError('unkown ner model type')
@@ -338,6 +374,48 @@ class KGConstructionController:
 
         # self.after_ner_train()
 
+    def valid_ner(self, index: int, device = 'cuda:0', num_workers: int = 0, output_dict = False) -> Union[str, dict]:
+        composition = self.ner_model_list[index]
+        valid_loader = self.create_ner_valid_loader(composition, num_workers=num_workers)
+        
+        preds, targets = composition.model.valid(
+            composition.model,
+            valid_loader,
+            device=device
+        )
+
+        transer = self.get_dataset_ner_label_transer(composition.model.params.dataset)
+
+        pred_labels, target_labels = [], []
+        for pred in preds:
+            pred_labels.append(transer.id2label(pred))
+        for target in targets:
+            target_labels.append(transer.id2label(target))
+        
+        print(ner_valid_report(target_labels, pred_labels, output_dict=True))
+        # composition.model.set_report(json5.dumps(ner_valid_report(target_labels, pred_labels, output_dict=True)))
+
+        return ner_valid_report(target_labels, pred_labels, output_dict=output_dict)
+
+
+    def valid_re(self, index: int, device = 'cuda:0', num_workers: int = 0, output_dict = False) -> Union[str, dict]:
+        composition = self.re_model_list[index]
+        
+        valid_loader = self.create_re_valid_loader(composition, num_workers=num_workers)
+        
+        preds, targets = composition.model.valid(
+            composition.model,
+            valid_loader,
+            device=device
+        )
+
+        transer = self.get_dataset_re_label_transer(composition.model.params.dataset)
+
+        targets = transer.id2label(targets)
+        preds =  transer.id2label(preds)
+
+        return re_valid_report(targets, preds, output_dict=output_dict)
+        
 
     def train_re(self, index: int = 0, device = 'cuda:0', num_workers: int = 0) -> None:
         r"""
@@ -353,6 +431,7 @@ class KGConstructionController:
             each_step_callback=self.train_ner_handler
         )
 
+
     def save_ner_model(self, index: int) -> None:
         composition = self.ner_model_list[index]
         name = composition.model.params.name
@@ -360,6 +439,7 @@ class KGConstructionController:
         save_name = name + '.' + model.__class__.__name__
         save_dir = self.NER_SAVE_DIR.joinpath(save_name)
         model.save(save_dir)
+
 
     def save_re_model(self, index) -> None:
         composition = self.re_model_list[index]
@@ -379,7 +459,7 @@ class KGConstructionController:
             model = BertBilstmNerModel.load( self.NER_SAVE_DIR.joinpath(model_name) , self.BERT_DIR)
             model.params.name = name
             params = model.params
-            embedder = SoftmaxReEmbedder(
+            embedder = BertBilstmNerEmbedder(
                 bert_url= self.BERT_DIR.joinpath(params.hyper_params.bert),
                 seq_len=params.hyper_params.seq_len
             )
@@ -387,15 +467,14 @@ class KGConstructionController:
             return
 
 
-    def load_re_model(self, model_name: str) -> None:
+    def load_re_model(self, model_name: str) -> int:
         r"""
         名字有.XXXX后缀？那就对了
         """
-        for i, c in enumerate(model_name[::-1]):
-            if c == '.':
-                name = model_name[0:i]
-                type_name = model_name[i+1:]
-
+        name_list = model_name.split('.')
+        name = ''.join(name_list[:-1])
+        type_name = name_list[-1]
+        print('loading re model %s(%s)'%(name, type_name))
         if type_name == 'SoftmaxReModel':
             model = SoftmaxReModel.load( self.RE_SAVE_DIR.joinpath(model_name), self.BERT_DIR )
             params = model.params
@@ -404,17 +483,44 @@ class KGConstructionController:
                 seq_len=params.hyper_params.seq_len
             )
             self.add_re(model, embedder=embedder)
-            return
+            return len(self.re_model_list) - 1
+    
+
+    def ner_re_joint_predicate(self, sentence: str, ner_index: int, re_index: int) -> tuple[list[NerEntity], list[Relation]]:
+        ner_labels = self.ner_predicate(ner_index, sentence)
+        entity_array = convert_label_seq_to_entity_pos(sentence, ner_labels)
+
+        relations = []
+        for i, subject in enumerate(entity_array):
+            for object in entity_array[i+1:]:
+                rel = self.re_predicate(re_index, sentence, subject.entity, object.entity)
+                relations.append( subject, rel, object )
+        entity_array = entity_array[::-1]
+
+        entity_array_reverse = entity_array.reverse()
+        for i, subject in enumerate(entity_array_reverse):
+            for object in entity_array_reverse[i+1:]:
+                rel = self.re_predicate(re_index, sentence, subject.entity, object.entity)
+                relations.append( subject, rel, object )
+        entity_array = entity_array[::-1]
+
+        return entity_array, relations
+            
+        
+    # begin implement needed APIs ----------------------------------------------------------------------------------------------------------------------
 
     def train_ner_handler(self, epoch: int, total_step: int, loss: float, pred: list[int], label: list[int]) -> None:
         return
 
+
     def train_re_handler(self, epoch: int, total_step: int, loss: float, pred: list[int], label: list[int]) -> None:
         return
     
+
     def before_ner_train(self, composition: NerModelComposition, loader: DataLoader) -> None:
         return
     
+
     def before_re_train(self, composition: ReModelComposition, loader: DataLoader) -> None:
         return
 
