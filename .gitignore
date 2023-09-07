@@ -1,7 +1,6 @@
 *.log
 data/generator/OPENAI_APIKEY.txt
 data/datasets/*
-data/database/*
 __pycache__
 *.bin
 .vscode

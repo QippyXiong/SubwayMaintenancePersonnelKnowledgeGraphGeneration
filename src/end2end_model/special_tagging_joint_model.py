@@ -10,4 +10,3 @@ from pathlib import Path
 class SpeacialTaggingJointAlbertModel(nn.Module):
 
     def __init__(self, albert_root_url: str) -> None:
-        ...

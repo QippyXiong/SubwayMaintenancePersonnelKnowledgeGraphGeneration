@@ -1,0 +1,5 @@
+{
+	"username": "neo4j",
+	"password": "$listalina_gdb_pass1",
+	"address": "localhost:7687"
+}
