@@ -71,3 +71,5 @@ class Capacity(StructuredNode):
 	description = StringProperty(max_length=256)
 	rule		= StringProperty()
 
+	rate		= RelationshipFrom('MaintenanceWorker', 'RATE', model=CapacityRate)
+

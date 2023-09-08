@@ -49,22 +49,6 @@
 
 # from typing import Union
 
-from fastapi import FastAPI
-from typing import Union
-
-
-# def main():
-app = FastAPI()
-
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
-
-
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
-
 import uvicorn
 
 from pathlib import Path
@@ -74,8 +58,6 @@ from database import connect_to_neo4j
 import json5
 
 if __name__ == '__main__':
-    # uvicorn.run("main:app", port=5000, log_level="info")
-
     # 连接到neo4j
     NEO4J_FILE_PATH = Path(os.path.dirname(__file__)).parent.joinpath('config', 'database_config', 'neo4jdb.json')
     with open(NEO4J_FILE_PATH, 'r', encoding='UTF-8') as fp:
@@ -85,5 +67,6 @@ if __name__ == '__main__':
     # 导入database excel文件
     FILE_PATH = Path(os.path.dirname(__file__))
     FILE_PATH = FILE_PATH.parent.joinpath('data', 'database', 'Synthesis', '维保人员数据.xlsx')
-    print(FILE_PATH)
     load_excel_file_to_graph(FILE_PATH)
+
+    uvicorn.run("server:app", port=5000, log_level="info")

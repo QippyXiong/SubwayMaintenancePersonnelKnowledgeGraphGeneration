@@ -8,15 +8,20 @@ import pandas as pd
 
 from .graph_models.maintenance_personnel import MaintenanceWorker, MaintenanceRecord, MaintenancePerformance
 from neomodel import db
+from neo4j.exceptions import ServiceUnavailable
 
 def load_excel_file_to_graph(file_path: str):
+	try:
+		db.cypher_query(
+			r"""
+			MATCH(n)
+			DETACH DELETE n
+			"""
+		) # 删掉原先图谱中的全部内容
+	except ServiceUnavailable:
+		print("[Neomodel Error] 未能连接到neo4j服务器，请检查neo4j服务器是否开启")
+		return 
 
-	db.cypher_query(
-		r"""
-		MATCH(n)
-		DETACH DELETE n
-		"""
-	) # 删掉原先图谱中的全部内容
 
 	mapping_worker = {
 		'id' 				: '工号/志愿者编号',
