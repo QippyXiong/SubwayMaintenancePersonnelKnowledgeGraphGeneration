@@ -1,9 +1,7 @@
 from torch.utils.data import Dataset
+from typing import Callable, Any, Union
+
 from torch.utils.data import Dataset
-from torch import tensor, long
-import os
-from typing import Optional, Callable, Any, Union
-import json
 
 
 class NerLabelTranser():

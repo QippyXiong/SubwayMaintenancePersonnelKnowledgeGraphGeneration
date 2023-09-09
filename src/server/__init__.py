@@ -1,10 +1,17 @@
-from fastapi import FastAPI, Request, Depends
-from typing import Union
+from typing import Union, Iterable
+
+from fastapi import FastAPI
 from pydantic import BaseModel
-from neomodel import db
+import json5
+
+from neomodel import DateTimeFormatProperty
 
 # def main():
 app = FastAPI()
+
+
+from database import MaintenanceWorker, Capacity
+
 
 @app.get("/")
 def read_root():
@@ -18,22 +25,49 @@ def read_item(item_id: str, q: Union[str, None] = None):
 
 
 class MaintenaceWorkerSearchData(BaseModel):
-    id: str
-    
+    key: str
+    data: str
 
-from database import MaintenanceWorker
 
 @app.post("/search/maintenance_worker")
 def read_worker(data: MaintenaceWorkerSearchData):
+    key = data.key
+    data = data.data
     # @TODO: 编写错误处理代码
     try:
-        persons = MaintenanceWorker.nodes.filter(id=data.id)
-    except Exception as e:
-        print(e.with_traceback())
-        return { 'msg': 'person not exsists' }
+        if(key == "id"):
+            persons = MaintenanceWorker.nodes.get(id=data)
+        elif(key == "name"):
+            persons = MaintenanceWorker.nodes.filter(name=data).all()
+        elif(key == "work_post"):
+            persons = MaintenanceWorker.nodes.filter(work_post=data).all()
+        elif(key == "capacity"):
+            capacities = Capacity.nodes.get(name=data)
+            persons = capacities.rate.all()
 
-    if any(persons): 
-        return { 'msg': 'success', 'data': persons[0] }
-    else:
-        return { 'msg': 'person not exsists', 'data': None }
+    except Exception as e:
+        return {'msg': 'person not exsists'}
+
+    if not isinstance(persons, Iterable):
+        persons = [persons]
+
+    ret_arr = []
+    for person in persons:
+        person_dict = dict()
+        for key, _ in person.__all_properties__:
+            person_dict[key] = str(getattr(person, key))
+        ret_arr.append({
+            'type': type(person).__name__,
+            'record': person_dict
+        })
+    # if any(persons):
+
+    return_arr = []
+
+
+    #     return {'msg': 'success', 'data': 'nima' }
+    #
+    # else:
+    return { 'ok': True, 'msg': 'person not exsists', 'data': ret_arr}
+
 

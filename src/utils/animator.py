@@ -1,9 +1,10 @@
 # this animator class using matplot lib for showing the trainning process
 # we can also use tqdm
 
-import tqdm
-from matplotlib import pyplot as plt
 from typing import *
+
+from matplotlib import pyplot as plt
+
 
 class Animator():
     r"""

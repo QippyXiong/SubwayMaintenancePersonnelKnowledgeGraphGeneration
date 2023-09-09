@@ -1,7 +1,8 @@
-from transformers import AutoTokenizer
-from torch import tensor, long
 from typing import Optional, Union
-from os import path
+
+from torch import tensor, long
+from transformers import AutoTokenizer
+
 
 class BertEmbedder(object):
     r""" 用于将单个句子处理成输入数据 """

@@ -5,10 +5,11 @@ r"""
 """
 
 import pandas as pd
-
-from .graph_models.maintenance_personnel import MaintenanceWorker, MaintenanceRecord, MaintenancePerformance
-from neomodel import db
 from neo4j.exceptions import ServiceUnavailable
+from neomodel import db
+
+from .graph_models.maintenance_personnel import MaintenanceWorker, MaintenanceRecord, Capacity
+
 
 def load_excel_file_to_graph(file_path: str):
 	try:
@@ -48,6 +49,12 @@ def load_excel_file_to_graph(file_path: str):
 		'review'			: '定期检修记录',
 	}
 
+	mapping_capacity = {
+		'name' 			: '维修能力名称',
+		'description' 	: '描述',
+		'rule'			: '规则',
+	}
+
 	# mapping_record = { mapping_record[key]: key for key in mapping_record }
 
 	# 处理维保人员数据
@@ -74,9 +81,30 @@ def load_excel_file_to_graph(file_path: str):
 		record = MaintenanceRecord(**data_dict)
 		record.save()
 		rel  = record.perform.connect( MaintenanceWorker.nodes.get(id=row_dict['工号']), { 
-			'malfunc_type': record.malfunction,
-			'performance': record.review
+			'malfunc_type': record.malfunction,  # 维修记录故障内容记录故障类型
+			'performance': record.review  # 维修记录返修评价记录维修效果
 		 } )
 		rel.save()
+
+
+	#处理维修能力数据
+	Mcapacities = pd.read_excel(file_path, sheet_name='维修能力')
+
+	for row in Mcapacities.itertuples():
+		data_dict = mapping_capacity.copy()
+		row_dict = { Mcapacities.keys()[i-1] : v for i, v in enumerate(row) }
+		for key in data_dict:
+			data_dict[key] = row_dict[data_dict[key]]
+		try:
+			capacity = Capacity.nodes.get(name=data_dict['name'])
+		except Exception as p:
+			capacity = Capacity(**data_dict)
+			capacity.save()
+		worker2capacity  = capacity.rate.connect(MaintenanceWorker.nodes.get(id=row_dict['维保人员工号']), {
+			'level': row_dict['维修能力等级'],
+		 } )
+		worker2capacity.save()
+
+
 		
 		
