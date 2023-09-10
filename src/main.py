@@ -49,6 +49,7 @@
 
 # from typing import Union
 
+
 import uvicorn
 
 from pathlib import Path
@@ -56,8 +57,14 @@ import os
 from database.utils import load_excel_file_to_graph
 from database import connect_to_neo4j
 import json5
+from database import MaintenanceWorker, Capacity, CapacityRate
+from neomodel import db
+
+import importlib
 
 if __name__ == '__main__':
+    # 清空项目栈缓存
+    importlib.invalidate_caches()
     # 连接到neo4j
     NEO4J_FILE_PATH = Path(os.path.dirname(__file__)).parent.joinpath('config', 'database_config', 'neo4jdb.json')
     with open(NEO4J_FILE_PATH, 'r', encoding='UTF-8') as fp:
@@ -65,8 +72,54 @@ if __name__ == '__main__':
     connect_to_neo4j(**neo4j)
 
     # 导入database excel文件
-    FILE_PATH = Path(os.path.dirname(__file__))
-    FILE_PATH = FILE_PATH.parent.joinpath('data', 'database', 'Synthesis', '维保人员数据.xlsx')
-    load_excel_file_to_graph(FILE_PATH)
+    # FILE_PATH = Path(os.path.dirname(__file__))
+    # FILE_PATH = FILE_PATH.parent.joinpath('data', 'database', 'Synthesis', '维保人员数据.xlsx')
+    # load_excel_file_to_graph(FILE_PATH)
 
-    uvicorn.run("server:app", port=5000, log_level="info")
+    uvicorn.run("server:app", port=5200, log_level="info")
+
+
+    # id= "m0001"
+    # query = MaintenanceWorker.nodes.filter(id=id)
+    # # 执行查询
+    # results = query.all()
+    #
+    # print(results[0])
+    # # 输出符合条件的人员信息
+    # for person in results:
+    #     print(person.id)
+    # data= "轨道维修"
+    # capacities = Capacity.nodes.get(name=data)
+    # print(capacities)
+    # persons = capacities.rate.all()
+    # print(persons)
+    # capacities = Capacity.nodes.get(name=data)
+    # # print(capacities)
+    # persons = capacities.rate.all()
+    # for person in persons:
+    #     print(person)
+
+
+    # person = MaintenanceWorker.nodes.get(id="m0001")
+    # capacities = person.capacity_rate.all()
+    #
+    # # 能力等级读取
+    # for cap in capacities:
+    #     print(cap)
+    #     print(person.id,cap.name)
+    #     r, meta = db.cypher_query(
+    #         f"""MATCH (c:Capacity {{name : '{cap.name}'}})-[r:RATE]->(p:MaintenanceWorker{{id : '{person.id}'}}) RETURN r"""
+    #     )
+    #     print(r[0][0]._properties['level'])
+    #     # print()
+    #
+    # p, _ = db.cypher_query(
+    #     f"""MATCH (p:MaintenanceWorker{{id : '{person.id}'}}) RETURN p"""
+    # )
+    # print(p)
+    #
+    # q, _ = db.cypher_query(
+    #         f"""MATCH (c:Capacity {{name : '{cap.name}'}}) RETURN c"""
+    #     )
+    # print(q)
+

@@ -1,7 +1,9 @@
 
-from .graph_models.maintenance_personnel import MaintenanceWorker, MaintenanceRecord, MaintenancePerformance, SkillAssessment, SkillAssessResult
-
 from neomodel import config, db
+
+from .graph_models.maintenance_personnel import MaintenanceWorker, MaintenanceRecord, MaintenancePerformance, \
+    SkillAssessment, SkillAssessResult, Capacity, CapacityRate
+
 
 def connect_to_neo4j(address: str, username: str, password: str):
 	r"""

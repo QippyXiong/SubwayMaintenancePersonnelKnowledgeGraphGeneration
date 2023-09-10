@@ -2,11 +2,12 @@ r"""
     dgre数据集的处理代码
 """
 
-from torch.utils.data import Dataset
-from dataclasses import dataclass
-from dataclasses_json import dataclass_json
-from typing import Callable, Any, Union, Iterable
 import json
+from dataclasses import dataclass
+from typing import Callable, Any, Union, Iterable
+
+from dataclasses_json import dataclass_json
+from torch.utils.data import Dataset
 
 r"""
     {

@@ -1,27 +1,12 @@
 from neomodel import (
-	config, 
-	StructuredNode, StringProperty, StructuredRel, 
-	UniqueIdProperty, RelationshipTo, RelationshipFrom,
-	DateProperty, IntegerProperty, BooleanProperty, DateTimeFormatProperty,
+    StructuredNode, StringProperty, StructuredRel,
+    UniqueIdProperty, RelationshipFrom,RelationshipTo,Relationship,
+    DateProperty, BooleanProperty, DateTimeFormatProperty,
 	
 	)
 
 
-class MaintenanceWorker(StructuredNode):
-	r"""
-	维修人员实体
-	"""
-	id 				= StringProperty(index=True, max_length=20)			# 工号/志愿者编号
-	name			= StringProperty(index = True, max_length=32)		# 姓名
-	sex 			= BooleanProperty()									# 性别
-	nation			= StringProperty(max_length=20)						# 民族
-	phone			= StringProperty(max_length=11)						# 联系方式
-	birth			= DateProperty()									# 出生日期
-	live_in			= StringProperty(max_length=256)					# 居住地址
-	employ_date 	= DateProperty()									# 入职时间
-	work_post 		= StringProperty()									# 岗位
-	work_level		= StringProperty()									# 岗位级别
-	department 		= StringProperty(max_length=20)						# 部门
+
 
 
 class MaintenancePerformance(StructuredRel):
@@ -62,14 +47,33 @@ class SkillAssessment(StructuredNode):
 
 
 class CapacityRate(StructuredRel):
+	r"""
+	关系类 维保人员-技能实体
+	"""
 	level		= StringProperty()
 
 
 class Capacity(StructuredNode):
-	id			= UniqueIdProperty()
-	name 		= StringProperty(max_length=10)
+	name 		= StringProperty(unique_index=True, required=True, max_length=10)
 	description = StringProperty(max_length=256)
 	rule		= StringProperty()
 
-	rate		= RelationshipFrom('MaintenanceWorker', 'RATE', model=CapacityRate)
+	rate		= Relationship('MaintenanceWorker', 'RATE', model=CapacityRate)
 
+class MaintenanceWorker(StructuredNode):
+	r"""
+	维修人员实体
+	"""
+	id 				= StringProperty(unique_index=True, required=True, max_length=20)			# 工号/志愿者编号
+	name			= StringProperty(index = True, max_length=32)		# 姓名
+	sex 			= BooleanProperty()									# 性别
+	nation			= StringProperty(max_length=20)						# 民族
+	phone			= StringProperty(max_length=11)						# 联系方式
+	birth			= DateProperty()									# 出生日期
+	live_in			= StringProperty(max_length=256)					# 居住地址
+	employ_date 	= DateProperty()									# 入职时间
+	work_post 		= StringProperty()									# 岗位
+	work_level		= StringProperty()									# 岗位级别
+	department 		= StringProperty(max_length=20)						# 部门
+
+	capacity_rate	= Relationship('Capacity', 'RATE', model=CapacityRate)  #维修能力

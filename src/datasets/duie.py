@@ -1,10 +1,8 @@
-from torch.utils.data import Dataset
-from typing import Callable, Any, Union, Iterable
-from json5 import loads
-import json
 from dataclasses import dataclass
+from typing import Callable, Any, Union, Iterable
+
 from dataclasses_json import dataclass_json
-import os
+from torch.utils.data import Dataset
 from tqdm import tqdm
 
 r"""

@@ -1,16 +1,18 @@
-from torch import nn, tensor, int32, save as torchsave, argmax, Tensor, load as torchload
-from transformers import BertModel, AutoTokenizer, BertConfig, logging as trans_loger
-from typing import Iterable, Union, Callable, Optional
-from dataclasses import dataclass
-from dataclasses_json import dataclass_json
-from os import path
 import os
-from torch.utils.data import Dataset, DataLoader
-from tqdm import tqdm
+from dataclasses import dataclass
+from os import path
+from typing import Iterable, Union, Callable, Optional
+
+import torch
+from dataclasses_json import dataclass_json
+from torch import nn, tensor, int32, save as torchsave, argmax, load as torchload
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import LRScheduler
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+from transformers import BertModel, AutoTokenizer, BertConfig, logging as trans_loger
 from transformers import get_linear_schedule_with_warmup
-import torch
+
 
 @dataclass_json
 @dataclass
