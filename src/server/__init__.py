@@ -63,7 +63,11 @@ def read_worker(data: MaintenaceWorkerSearchData):
                      -(c:Capacity{{name : '{cap.name}'}}) RETURN r"""
                 r, _ = db.cypher_query(query)
                 r = r[0][0]
-                rel = {"type": r.type, "record": {"source": person.id, "target": cap.name, "properties": r._properties}}
+                source = {"type":type(person).__name__, "majorkey":{"id":person.id}}
+                target = {"type":type(cap).__name__, "majorkey":{"name":cap.name}}
+                # rel = {"type": r.type, "record": {"source": person.id, "target": cap.name, "properties": r._properties}}
+                rel = {"type": r.type, "record": {"source": source, "target": target, "properties": r._properties}}
+
                 ret_arr.append(rel)
 
             maintenancerecords = person.maintenance_perform.all()
@@ -84,8 +88,12 @@ def read_worker(data: MaintenaceWorkerSearchData):
                         RETURN r"""
                 r, _ = db.cypher_query(query)
                 r = r[0][0]
+                source = {"type": type(person).__name__, "majorkey": {"id": person.id}}
+                for key in rec_info.keys():
+                    rec_info[key] = str(rec_info[key])
+                target = {"type": type(rec).__name__, "majorkey": rec_info}
                 rel = {"type": r.type,
-                       "record": {"source": person.id, "target": rec_info, "properties": r._properties}}
+                       "record": {"source": source, "target": target, "properties": r._properties}}
                 ret_arr.append(rel)
         if any(ret_arr):
             return {'ok': True, 'msg': 'success', 'data': ret_arr}
