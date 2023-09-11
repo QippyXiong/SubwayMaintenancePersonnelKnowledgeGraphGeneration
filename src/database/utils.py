@@ -21,8 +21,7 @@ def load_excel_file_to_graph(file_path: str):
 		) # 删掉原先图谱中的全部内容
 	except ServiceUnavailable:
 		print("[Neomodel Error] 未能连接到neo4j服务器，请检查neo4j服务器是否开启")
-		return 
-
+		return
 
 	mapping_worker = {
 		'id' 				: '工号/志愿者编号',
@@ -58,6 +57,10 @@ def load_excel_file_to_graph(file_path: str):
 	# mapping_record = { mapping_record[key]: key for key in mapping_record }
 
 	# 处理维保人员数据
+	query = r"""CREATE CONSTRAINT MaintenanceWork_unique_key 
+			FOR(m: MaintenanceWorker) REQUIRE(m.id) IS UNIQUE
+	"""
+
 	worker_data = pd.read_excel(file_path, sheet_name='维保人员')
 
 	for row in worker_data.itertuples():
@@ -65,26 +68,48 @@ def load_excel_file_to_graph(file_path: str):
 		row_dict = { worker_data.keys()[i-1] : v for i, v in enumerate(row) }
 		for key in data_dict:
 			data_dict[key] = row_dict[data_dict[key]]
-		worker = MaintenanceWorker(**data_dict)
-		worker.phone = str(worker.phone)
-		worker.save()
+		try:
+			worker = MaintenanceWorker.nodes.get(id = data_dict['id'])
+		except Exception as e:
+			worker = MaintenanceWorker(**data_dict)
+			worker.phone = str(worker.phone)
+			worker.save()
 
 	# 处理维修记录数据
 	records = pd.read_excel(file_path, sheet_name='维修记录')
 
 	for row in records.itertuples():
 		data_dict = mapping_record.copy()
-		row_dict = { records.keys()[i-1] : v for i, v in enumerate(row) }
+		row_dict = {records.keys()[i-1] : v for i, v in enumerate(row)}
 		for key in data_dict:
 			data_dict[key] = row_dict[data_dict[key]]
-		# worker = MaintenanceWorker.nodes.get(id=data_dict['id'])
-		record = MaintenanceRecord(**data_dict)
-		record.save()
-		rel  = record.perform.connect( MaintenanceWorker.nodes.get(id=row_dict['工号']), { 
-			'malfunc_type': record.malfunction,  # 维修记录故障内容记录故障类型
-			'performance': record.review  # 维修记录返修评价记录维修效果
-		 } )
-		rel.save()
+		try:
+			# 查询维修记录是否已存在
+			record = MaintenanceRecord.nodes.get(
+				malfunction = data_dict['malfunction'],
+				place 		= data_dict['place'],
+				malfunc_time= data_dict['malfunc_time'],
+				)
+			print(record)
+
+			# 查询维修记录是否未关联此条记录的维修人员
+			record2worker = record.perform.all()
+			ids = [w.id for w in record2worker]
+			if row_dict['工号'] not in ids:
+				rel = record.perform.connect(MaintenanceWorker.nodes.get(id=row_dict['工号']), {
+					'malfunc_type': record.malfunction,  # 维修记录故障内容记录故障类型
+					'performance': record.review  # 维修记录返修评价记录维修效果
+				})
+				rel.save()
+		except Exception as e:
+			record = MaintenanceRecord(**data_dict)
+			print("ttt",record)
+			record.save()
+			rel  = record.perform.connect( MaintenanceWorker.nodes.get(id=row_dict['工号']), {
+				'malfunc_type': record.malfunction,  # 维修记录故障内容记录故障类型
+				'performance': record.review  # 维修记录返修评价记录维修效果
+			 } )
+			rel.save()
 
 
 	#处理维修能力数据
