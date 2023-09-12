@@ -32,7 +32,7 @@ class SearchData(BaseModel):
 def read_entity(ent_type: str, data: SearchData):
     # return {"None":None, "[]":[]}
     # return {'ok': True, 'msg': 'success', 'data': ent_type}
-    # print(ent_type)
+    print(ent_type)
     try:
         if data.relation == "None":
             ret_arr = EntityQueryByAtt(ent_type=ent_type, attr=data.properties)
@@ -41,25 +41,19 @@ def read_entity(ent_type: str, data: SearchData):
             if any(ret_arr):
                 return {'ok': True, 'msg': 'success', 'data': ret_arr}
             else:
-                return {'ok': False, 'msg': f'{ent_type} not exsists', 'data': ret_arr}
+                return {'ok': False, 'msg': f'{ent_type} not exsists', 'data': None}
         if data.relation == "All":
-            ret_arr = RelQueryByEnt(ent_type=ent_type, attr=data.properties, rel_type=data.relation)
-            if isinstance(ret_arr, str):
-                return {'ok': False, 'msg': ret_arr, 'data': None}
-            if any(ret_arr):
-                return {'ok': True, 'msg': 'success', 'data': ret_arr}
-            else:
-                return {'ok': False, 'msg': f'{ent_type} not exsists', 'data': None}
-        else:
             ret_arr = RelQueryByEnt(ent_type=ent_type, attr=data.properties, rel_type=None)
-            if isinstance(ret_arr, str):
-                return {'ok': False, 'msg': ret_arr, 'data': None}
-            if any(ret_arr):
-                return {'ok': True, 'msg': 'success', 'data': ret_arr}
-            else:
-                return {'ok': False, 'msg': f'{ent_type} not exsists', 'data': None}
+        else:
+            ret_arr = RelQueryByEnt(ent_type=ent_type, attr=data.properties, rel_type=data.relation)
+        if isinstance(ret_arr, str):
+            return {'ok': False, 'msg': ret_arr, 'data': None}
+        if any(ret_arr):
+            return {'ok': True, 'msg': 'success', 'data': ret_arr}
+        else:
+            return {'ok': False, 'msg': f'{ent_type} not exsists', 'data': None}
     except Exception as e:
-        return {"error": "Validation error", "details": str(e)}
+        return {'ok': False, "msg": str(e), 'data': None}
 
 class MaintenaceWorkerSearchData(BaseModel):
     key: str
