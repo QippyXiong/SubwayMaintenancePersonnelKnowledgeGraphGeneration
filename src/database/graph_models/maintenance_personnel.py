@@ -30,7 +30,7 @@ class MaintenanceRecord(StructuredNode):
 			(format="%Y-%m-%d %H:%M:%S")								# 维修完成时间
 	review			= StringProperty()									# 返修评价
 
-	perform = Relationship('MaintenanceWorker', 'PERFORMED', model=MaintenancePerformance)
+	MaintenancePerformance = Relationship('MaintenanceWorker', 'PERFORMED', model=MaintenancePerformance)
 
 
 class VolunteerActivity(StructuredNode):
@@ -69,16 +69,21 @@ class CapacityRate(StructuredRel):
 	"""
 	level		= StringProperty()
 
+	def __iter__(self):
+		attrib_names = ['level']
+		for name in attrib_names:
+			yield getattr(self, name)
+
 
 class Capacity(StructuredNode):
 	r"""
 	维修能力实体
 	"""
-	name 		= StringProperty(unique_index=True, required=True, max_length=10)    	# 能力名 唯一标识
-	description = StringProperty(max_length=256)										# 描述
-	rule		= StringProperty()														# 能力规则
+	name 			= StringProperty(unique_index=True, required=True, max_length=10)    	# 能力名 唯一标识
+	description 	= StringProperty(max_length=256)										# 描述
+	rule			= StringProperty()														# 能力规则
 
-	rate		= Relationship('MaintenanceWorker', 'RATE', model=CapacityRate)			# 维修能力关联的人员实体
+	CapacityRate	= Relationship('MaintenanceWorker', 'RATE', model=CapacityRate)			# 维修能力关联的人员实体
 
 class MaintenanceWorker(StructuredNode):
 	r"""
@@ -96,8 +101,8 @@ class MaintenanceWorker(StructuredNode):
 	work_level		= StringProperty()																	# 岗位级别
 	department 		= StringProperty(max_length=20)														# 部门
 
-	capacity_rate 	= Relationship('Capacity', 'RATE', model=CapacityRate)  							# 维修能力
-	maintenance_perform = Relationship('MaintenanceRecord','PERFORMED', model=MaintenancePerformance)   # 维修表现
+	CapacityRate 	= Relationship('Capacity', 'RATE', model=CapacityRate)  							# 维修能力
+	MaintenancePerformance = Relationship('MaintenanceRecord','PERFORMED', model=MaintenancePerformance)   # 维修表现
 
 
 class Volunteer(StructuredNode):
@@ -114,4 +119,4 @@ class Volunteer(StructuredNode):
 	apply_date = DateProperty()  																		# 申请时间
 
 
-	maintenance_perform = Relationship('MaintenanceRecord', 'PERFORMED', model=MaintenancePerformance)  # 志愿活动表现
+	# maintenance_perform = Relationship('MaintenanceRecord', 'PERFORMED', model=MaintenancePerformance)  # 志愿活动表现

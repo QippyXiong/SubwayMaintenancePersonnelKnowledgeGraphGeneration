@@ -4,14 +4,14 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import json5
 
-from neomodel import DateTimeFormatProperty, db
+from neomodel import DateTimeFormatProperty, db, Relationship
 
 # def main():
 app = FastAPI()
 
 
 from database import MaintenanceWorker, Capacity
-
+from database.utils import EntityQueryByAtt, RelQueryByEnt
 
 @app.get("/")
 def read_root():
@@ -24,11 +24,46 @@ def read_item(item_id: str, q: Union[str, None] = None):
     return {"item_id": item_id, "q": q}
 
 
+
+class SearchData(BaseModel):
+    properties  : dict
+    relation    : str
+@app.post("/search/entity/{ent_type}")
+def read_entity(ent_type: str, data: SearchData):
+    # return {"None":None, "[]":[]}
+    # return {'ok': True, 'msg': 'success', 'data': ent_type}
+    # print(ent_type)
+    try:
+        if data.relation == "None":
+            ret_arr = EntityQueryByAtt(ent_type=ent_type, attr=data.properties)
+            if isinstance(ret_arr, str):
+                return {'ok': False, 'msg': ret_arr, 'data': None}
+            if any(ret_arr):
+                return {'ok': True, 'msg': 'success', 'data': ret_arr}
+            else:
+                return {'ok': False, 'msg': f'{ent_type} not exsists', 'data': ret_arr}
+        if data.relation == "All":
+            ret_arr = RelQueryByEnt(ent_type=ent_type, attr=data.properties, rel_type=data.relation)
+            if isinstance(ret_arr, str):
+                return {'ok': False, 'msg': ret_arr, 'data': None}
+            if any(ret_arr):
+                return {'ok': True, 'msg': 'success', 'data': ret_arr}
+            else:
+                return {'ok': False, 'msg': f'{ent_type} not exsists', 'data': None}
+        else:
+            ret_arr = RelQueryByEnt(ent_type=ent_type, attr=data.properties, rel_type=None)
+            if isinstance(ret_arr, str):
+                return {'ok': False, 'msg': ret_arr, 'data': None}
+            if any(ret_arr):
+                return {'ok': True, 'msg': 'success', 'data': ret_arr}
+            else:
+                return {'ok': False, 'msg': f'{ent_type} not exsists', 'data': None}
+    except Exception as e:
+        return {"error": "Validation error", "details": str(e)}
+
 class MaintenaceWorkerSearchData(BaseModel):
     key: str
     data: str
-
-
 @app.post("/search/maintenance_worker/person")
 def read_worker(data: MaintenaceWorkerSearchData):
     key = data.key
@@ -61,6 +96,11 @@ def read_worker(data: MaintenaceWorkerSearchData):
                     # print(ret)
                 query = f"""MATCH (p:MaintenanceWorker{{id : '{person.id}'}})<-[r:RATE] \
                      -(c:Capacity{{name : '{cap.name}'}}) RETURN r"""
+                # for rel_name, rel in person.__all_relationships__:
+                #     rel: Relationship
+                #     related_nodes = rel.manager.all()
+                #     for node in related_nodes:
+                #         edge = rel.manager.relationship(node)
                 r, _ = db.cypher_query(query)
                 r = r[0][0]
                 source = {"type":type(person).__name__, "majorkey":{"id":person.id}}

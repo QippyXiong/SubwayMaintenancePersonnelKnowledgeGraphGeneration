@@ -46,6 +46,7 @@
 #
 #     def train_re_handler(self, epoch: int, total_step: int, loss: float, pred: list[int], label: list[int]) -> None:
 #         self.ani.add(total_step, loss)
+from typing import Union, Dict
 
 # from typing import Union
 
@@ -54,11 +55,15 @@ import uvicorn
 
 from pathlib import Path
 import os
-from database.utils import load_excel_file_to_graph
+from database.utils import load_excel_file_to_graph, EntityQueryByAtt, parse_record_to_dict,  \
+    RelQueryByEnt
 from database import connect_to_neo4j
 import json5
 from database import MaintenanceWorker, Capacity, CapacityRate, MaintenanceRecord
-from neomodel import db
+from neomodel import db, RelationshipManager, Relationship, StructuredNode
+
+
+
 
 if __name__ == '__main__':
 
@@ -69,10 +74,36 @@ if __name__ == '__main__':
     connect_to_neo4j(**neo4j)
     #
     # # 导入database excel文件
-    FILE_PATH = Path(os.path.dirname(__file__))
-    FILE_PATH = FILE_PATH.parent.joinpath('data', 'database', 'Synthesis', '维保人员数据.xlsx')
-    load_excel_file_to_graph(FILE_PATH)
+    # FILE_PATH = Path(os.path.dirname(__file__))
+    # FILE_PATH = FILE_PATH.parent.joinpath('data', 'database', 'Synthesis', '维保人员数据.xlsx')
+    # load_excel_file_to_graph(FILE_PATH)
     #
     uvicorn.run("server:app", port=5200, log_level="info")
-
+    # query = {"ent_type": "MaintenanceWorker", "attr": {"work_post": "车辆维修技术员"}}
+    # query = {"ent_type": "Capacity", "attr": {"name": "轨道维修"}}
+    #
+    # query = {"ent_type": "Capacity", "attr": {"element_id": "4:5f68949a-747c-4cb7-bbb1-7314236ca878:61"}}
+    # ret = EntityQueryByAtt(**query)
+    # print(ret)
+    # query = {"ent_type": "MaintenanceWorker", "attr": {"id": "m0001"},"rel_type":"MaintenancePerformance"}
+    # ret2 = RelQueryByEnt(**query)
+    # print(ret2)
+    # query = {"ent_type": "Capacity", "attr": {"name": "轨道维修"}, "rel_type": None}
+    # ret1 = RelQueryByEnt(**query)
+    # print(ret1)
+    # persons = MaintenanceWorker.nodes.filter(id =  "m0001")
+    # # print(dir(person))
+    # for person in persons:
+    #     print(parse_record_to_dict(person))
+    #     print(person.element_id)
+    #     for rel_name, _ in person.__all_relationships__:
+    #         rel: RelationshipManager = getattr(person, rel_name)
+    #         for node in rel.all():
+    #             edge: CapacityRate = rel.relationship(node)
+    #             print(type(edge.start_node()).__name__)
+    #             print(edge._end_node_element_id)
+    #             print(parse_record_to_dict(edge))
+    # element_id = "4:5f68949a-747c-4cb7-bbb1-7314236ca878:61"
+    # cap = Capacity.nodes.get(element_id=element_id)
+    # print(cap)
 
