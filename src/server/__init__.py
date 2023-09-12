@@ -4,14 +4,14 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import json5
 
-from neomodel import DateTimeFormatProperty, db
+from neomodel import DateTimeFormatProperty, db, Relationship
 
 # def main():
 app = FastAPI()
 
 
 from database import MaintenanceWorker, Capacity
-
+from database.utils import EntityQueryByAtt, RelQueryByEnt
 
 @app.get("/")
 def read_root():
@@ -24,12 +24,47 @@ def read_item(item_id: str, q: Union[str, None] = None):
     return {"item_id": item_id, "q": q}
 
 
+
+class SearchData(BaseModel):
+    properties  : dict
+    relation    : str
+@app.post("/search/entity/{ent_type}")
+def read_entity(ent_type: str, data: SearchData):
+    # return {"None":None, "[]":[]}
+    # return {'ok': True, 'msg': 'success', 'data': ent_type}
+    # print(ent_type)
+    try:
+        if data.relation == "None":
+            ret_arr = EntityQueryByAtt(ent_type=ent_type, attr=data.properties)
+            if isinstance(ret_arr, str):
+                return {'ok': False, 'msg': ret_arr, 'data': None}
+            if any(ret_arr):
+                return {'ok': True, 'msg': 'success', 'data': ret_arr}
+            else:
+                return {'ok': False, 'msg': f'{ent_type} not exsists', 'data': ret_arr}
+        if data.relation == "All":
+            ret_arr = RelQueryByEnt(ent_type=ent_type, attr=data.properties, rel_type=data.relation)
+            if isinstance(ret_arr, str):
+                return {'ok': False, 'msg': ret_arr, 'data': None}
+            if any(ret_arr):
+                return {'ok': True, 'msg': 'success', 'data': ret_arr}
+            else:
+                return {'ok': False, 'msg': f'{ent_type} not exsists', 'data': None}
+        else:
+            ret_arr = RelQueryByEnt(ent_type=ent_type, attr=data.properties, rel_type=None)
+            if isinstance(ret_arr, str):
+                return {'ok': False, 'msg': ret_arr, 'data': None}
+            if any(ret_arr):
+                return {'ok': True, 'msg': 'success', 'data': ret_arr}
+            else:
+                return {'ok': False, 'msg': f'{ent_type} not exsists', 'data': None}
+    except Exception as e:
+        return {"error": "Validation error", "details": str(e)}
+
 class MaintenaceWorkerSearchData(BaseModel):
     key: str
     data: str
-
-
-@app.post("/search/maintenance_worker")
+@app.post("/search/maintenance_worker/person")
 def read_worker(data: MaintenaceWorkerSearchData):
     key = data.key
     data = data.data
@@ -61,9 +96,18 @@ def read_worker(data: MaintenaceWorkerSearchData):
                     # print(ret)
                 query = f"""MATCH (p:MaintenanceWorker{{id : '{person.id}'}})<-[r:RATE] \
                      -(c:Capacity{{name : '{cap.name}'}}) RETURN r"""
+                # for rel_name, rel in person.__all_relationships__:
+                #     rel: Relationship
+                #     related_nodes = rel.manager.all()
+                #     for node in related_nodes:
+                #         edge = rel.manager.relationship(node)
                 r, _ = db.cypher_query(query)
                 r = r[0][0]
-                rel = {"type": r.type, "record": {"source": person.id, "target": cap.name, "properties": r._properties}}
+                source = {"type":type(person).__name__, "majorkey":{"id":person.id}}
+                target = {"type":type(cap).__name__, "majorkey":{"name":cap.name}}
+                # rel = {"type": r.type, "record": {"source": person.id, "target": cap.name, "properties": r._properties}}
+                rel = {"type": r.type, "record": {"source": source, "target": target, "properties": r._properties}}
+
                 ret_arr.append(rel)
 
             maintenancerecords = person.maintenance_perform.all()
@@ -84,8 +128,12 @@ def read_worker(data: MaintenaceWorkerSearchData):
                         RETURN r"""
                 r, _ = db.cypher_query(query)
                 r = r[0][0]
+                source = {"type": type(person).__name__, "majorkey": {"id": person.id}}
+                for key in rec_info.keys():
+                    rec_info[key] = str(rec_info[key])
+                target = {"type": type(rec).__name__, "majorkey": rec_info}
                 rel = {"type": r.type,
-                       "record": {"source": person.id, "target": rec_info, "properties": r._properties}}
+                       "record": {"source": source, "target": target, "properties": r._properties}}
                 ret_arr.append(rel)
         if any(ret_arr):
             return {'ok': True, 'msg': 'success', 'data': ret_arr}
@@ -93,10 +141,21 @@ def read_worker(data: MaintenaceWorkerSearchData):
             return {'ok': False, 'msg': 'person not exsists', 'data': None}
 
     except ValueError:
-        # 能力字段查询
+            return{'ok': False, 'msg': 'query key error', 'data': None}
+
+@app.post("/search/maintenance_worker/capacity")
+def read_worker(data: MaintenaceWorkerSearchData):
+    key = data.key
+    data = data.data
+    # @TODO: 编写错误处理代码
+    check = {key: data}
+    ret_arr = []
+    try:
         if key == "capacity":
-            ret_arr = []
-            cap = Capacity.nodes.get(name=data)
+            try:
+                cap = Capacity.nodes.get(name=data)
+            except Exception as e:
+                return {'ok': False, 'msg': 'capacity not exsists', 'data': None}
             cap_dict = dict()
             for key, _ in cap.__all_properties__:
                 cap_dict[key] = str(getattr(cap, key))
@@ -109,15 +168,9 @@ def read_worker(data: MaintenaceWorkerSearchData):
                 for key, _ in person.__all_properties__:
                     person_dict[key] = str(getattr(person, key))
                 ret_arr.append({"type": type(person).__name__, "record": person_dict})
+            return {'ok': True, 'msg': 'success', 'data': ret_arr}
 
-            if any(ret_arr):
-                return {'ok': True, 'msg': 'success', 'data': ret_arr}
 
-        else:
+    except ValueError:
             return{'ok': False, 'msg': 'query key error', 'data': None}
-
-
-
-
-
 
