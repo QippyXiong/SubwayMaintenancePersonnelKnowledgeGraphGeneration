@@ -142,3 +142,5 @@ net.set_report(report)
 net.params.name = 'dgre_re v0.2'
 net.save( str( MODEL_DIR.joinpath('re') ) )
 ```
+
+此仓库已添加至[gitee](https://gitee.com/pry0/subway-maintenance-personnel-knowledge-graph-generation)
