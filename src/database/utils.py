@@ -7,6 +7,7 @@ r"""
 import pandas as pd
 from neo4j.exceptions import ServiceUnavailable
 from neomodel import db
+from neomodel.exceptions import DeflateError
 
 from .graph_models.maintenance_personnel import MaintenanceWorker, MaintenanceRecord, Capacity
 
@@ -125,10 +126,14 @@ def load_excel_file_to_graph(file_path: str):
 		except Exception as p:
 			capacity = Capacity(**data_dict)
 			capacity.save()
-		worker2capacity  = capacity.rate.connect(MaintenanceWorker.nodes.get(id=row_dict['维保人员工号']), {
-			'level': row_dict['维修能力等级'],
-		 } )
-		worker2capacity.save()
+		try:
+			worker2capacity  = capacity.rate.connect(MaintenanceWorker.nodes.get(id=row_dict['维保人员工号']), {
+				'level': row_dict['维修能力等级'],
+			 } )
+			worker2capacity.save()
+		except DeflateError:
+			pass
+
 
 
 		

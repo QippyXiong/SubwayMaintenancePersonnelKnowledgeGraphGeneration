@@ -29,7 +29,7 @@ class MaintenaceWorkerSearchData(BaseModel):
     data: str
 
 
-@app.post("/search/maintenance_worker")
+@app.post("/search/maintenance_worker/person")
 def read_worker(data: MaintenaceWorkerSearchData):
     key = data.key
     data = data.data
@@ -101,10 +101,21 @@ def read_worker(data: MaintenaceWorkerSearchData):
             return {'ok': False, 'msg': 'person not exsists', 'data': None}
 
     except ValueError:
-        # 能力字段查询
+            return{'ok': False, 'msg': 'query key error', 'data': None}
+
+@app.post("/search/maintenance_worker/capacity")
+def read_worker(data: MaintenaceWorkerSearchData):
+    key = data.key
+    data = data.data
+    # @TODO: 编写错误处理代码
+    check = {key: data}
+    ret_arr = []
+    try:
         if key == "capacity":
-            ret_arr = []
-            cap = Capacity.nodes.get(name=data)
+            try:
+                cap = Capacity.nodes.get(name=data)
+            except Exception as e:
+                return {'ok': False, 'msg': 'capacity not exsists', 'data': None}
             cap_dict = dict()
             for key, _ in cap.__all_properties__:
                 cap_dict[key] = str(getattr(cap, key))
@@ -117,15 +128,9 @@ def read_worker(data: MaintenaceWorkerSearchData):
                 for key, _ in person.__all_properties__:
                     person_dict[key] = str(getattr(person, key))
                 ret_arr.append({"type": type(person).__name__, "record": person_dict})
+            return {'ok': True, 'msg': 'success', 'data': ret_arr}
 
-            if any(ret_arr):
-                return {'ok': True, 'msg': 'success', 'data': ret_arr}
 
-        else:
+    except ValueError:
             return{'ok': False, 'msg': 'query key error', 'data': None}
-
-
-
-
-
 
