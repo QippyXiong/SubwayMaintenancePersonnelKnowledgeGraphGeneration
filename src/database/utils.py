@@ -3,6 +3,7 @@ r"""
 1.读人工制定excel文件内容到图谱中
 
 """
+import datetime
 from typing import Union, Dict, List, Optional
 
 import pandas as pd
@@ -143,7 +144,7 @@ def load_excel_file_to_graph(file_path: str):
 		except DeflateError:
 			pass
 
-def parse_record_to_dict(record: Union[Relationship, StructuredNode]) -> Dict:
+def parse_record_to_dict(record: Union[Relationship, StructuredNode, StructuredRel]) -> Dict:
 	r"""
 	Args:
 		'record': entity | relationship
@@ -200,6 +201,17 @@ def EntityQueryByAtt(ent_type:str, attr:dict):
 	ret_arr = []
 	relations = getRelEnt(ent_type)
 	try:
+		# 时间类型字段处理
+		ent_class = kg_mapping[ent_type]
+		time_key = get_time_key(ent_class)
+		for k in attr.keys():
+			if k in time_key:
+				try:
+					attr[k] = datetime.datetime.strptime(attr[k], "%Y-%m-%d %H:%M:%S")
+				except ValueError:
+					msg = "time format error, it should be %Y-%m-%d %H:%M:%S"
+					return msg
+
 		entities = kg_mapping[ent_type].nodes.filter(**attr)
 		for ent in entities:
 			ent_dict = parse_record_to_dict(ent)
@@ -223,6 +235,12 @@ def RelQueryByEnt(ent_type:str, attr:dict, rel_type:Optional[str]):
 	"""
 	ret_arr = []
 	try:
+		ent_class = kg_mapping[ent_type]
+		time_key = get_time_key(ent_class)
+		for k in attr.keys():
+			if  k in time_key:
+				attr[k] = datetime.datetime.strptime(attr[k], "%Y-%m-%d %H:%M:%S")
+
 		entities = kg_mapping[ent_type].nodes.filter(**attr)
 		for ent in entities:
 			if rel_type is None:
@@ -263,3 +281,27 @@ def RelQueryByRel(rel_type: str, rel :RelationshipManager):
 		# 	record2 = {"element_id": edge._start_node_element_id, "record": parse_record_to_dict(edge.start_node())}
 		# 	ret_arr.append({"type": type(edge.start_node()).__name__, "record": record2})
 	return ret_arr
+
+
+def get_time_key(ent_class: Union[StructuredNode, StructuredRel]):
+	r"""
+	得到类的时间属性字段
+	"""
+	attributes = ent_class.__all_properties__
+	time_att = []
+	for att_name, att_value in attributes:
+		if type(att_value).__name__ in ['DateProperty', 'DateTimeFormatProperty']:
+			time_att.append(att_name)
+	return time_att
+
+
+def handle_time_key(ent_type: str, attr: Dict):
+	r"""
+	时间类型字段处理
+	"""
+	ent_class = kg_mapping[ent_type]
+	time_key = get_time_key(ent_class)
+	for k in attr.keys():
+		if k in time_key:
+			attr[k] = datetime.datetime.strptime(attr[k], "%Y-%m-%d %H:%M:%S")
+	return attr

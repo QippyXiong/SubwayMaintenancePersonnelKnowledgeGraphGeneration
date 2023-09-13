@@ -56,14 +56,11 @@ import uvicorn
 from pathlib import Path
 import os
 from database.utils import load_excel_file_to_graph, EntityQueryByAtt, parse_record_to_dict,  \
-    RelQueryByEnt, getRelEnt
+    RelQueryByEnt, getRelEnt, get_time_key
 from database import connect_to_neo4j
 import json5
 from database import MaintenanceWorker, Capacity, CapacityRate, MaintenanceRecord
-from neomodel import db, RelationshipManager, Relationship, StructuredNode
-
-
-
+from neomodel import db, RelationshipManager, Relationship, StructuredNode, DateTimeFormatProperty, DateTimeProperty
 
 if __name__ == '__main__':
 
@@ -77,7 +74,24 @@ if __name__ == '__main__':
     # FILE_PATH = Path(os.path.dirname(__file__))
     # FILE_PATH = FILE_PATH.parent.joinpath('data', 'database', 'Synthesis', '维保人员数据.xlsx')
     # load_excel_file_to_graph(FILE_PATH)
+
+    # 使用 vars() 函数获取属性信息
+    # print(get_time_key(MaintenanceRecord))
     #
+    import datetime
+
+    search_date_str = "1980-05-02 00:00:00"
+    # search_date = datetime.datetime.strptime(search_date_str, "%Y-%m-%d %H:%M:%S")
+    # # for
+    # print(type(MaintenanceWorker.employ_date).__name__)
+
+    # print(search_date)
+    # attr = {"ent_type": "MaintenanceRecord", "attr": {"begin_time": '2022-01-01 11:25:00 xxx'}}
+    # persons = EntityQueryByAtt(**attr)
+    # for person in persons:
+    #     print(person)
+    # for perp in per:
+    #     print(perp)
     uvicorn.run("server:app", port=5200, log_level="info")
     # query = {"ent_type": "MaintenanceWorker", "attr": {"work_post": "车辆维修技术员"}}
     # query = {"ent_type": "Capacity", "attr": {"name": "轨道维修"}}

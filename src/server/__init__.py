@@ -11,7 +11,7 @@ app = FastAPI()
 
 
 from database import MaintenanceWorker, Capacity
-from database.utils import EntityQueryByAtt, RelQueryByEnt
+from database.utils import EntityQueryByAtt, RelQueryByEnt,get_time_key
 
 @app.get("/")
 def read_root():
@@ -32,7 +32,7 @@ class SearchData(BaseModel):
 def read_entity(ent_type: str, data: SearchData):
     # return {"None":None, "[]":[]}
     # return {'ok': True, 'msg': 'success', 'data': ent_type}
-    print(ent_type)
+    # print(ent_type)
     try:
         if data.relation == "None":
             ret_arr = EntityQueryByAtt(ent_type=ent_type, attr=data.properties)
