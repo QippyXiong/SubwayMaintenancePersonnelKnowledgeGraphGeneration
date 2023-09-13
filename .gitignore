@@ -9,3 +9,4 @@ __pycache__
 db.json
 models/ner/*
 models/re/*
+neo4jdb.json
