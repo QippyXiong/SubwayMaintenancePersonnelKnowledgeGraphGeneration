@@ -9,7 +9,7 @@
 # # src pckages
 # from controller import KGConstructionController, NerTypes, ReTypes
 # from controller.contruction_model_types import NerModelComposition, ReModelComposition
-# from utils.animator import Animator
+# from utils.animator import Animator,
 #
 # # 配置文件目录
 # # 以下路径宏都是相对于项目目录 SubwayMaintenancePersonnelKnowledgeGraphGeneration
@@ -56,7 +56,7 @@ import uvicorn
 from pathlib import Path
 import os
 from database.utils import load_excel_file_to_graph, EntityQueryByAtt, parse_record_to_dict,  \
-    RelQueryByEnt
+    RelQueryByEnt, getRelEnt
 from database import connect_to_neo4j
 import json5
 from database import MaintenanceWorker, Capacity, CapacityRate, MaintenanceRecord
@@ -73,14 +73,6 @@ if __name__ == '__main__':
         neo4j = json5.load(fp)
     connect_to_neo4j(**neo4j)
 
-    # per = MaintenanceWorker.nodes.get(id="m0001")
-    # print(MaintenanceWorker.__all_relationships__)
-    # for rel_name, _ in per.__all_relationships__:
-    #     print(rel_name)
-    #     rel: RelationshipManager = getattr(per, rel_name)
-    #     t = type(rel[0]).__name__
-    #     print(t)
-        #
     # # 导入database excel文件
     # FILE_PATH = Path(os.path.dirname(__file__))
     # FILE_PATH = FILE_PATH.parent.joinpath('data', 'database', 'Synthesis', '维保人员数据.xlsx')

@@ -10,12 +10,15 @@ from neo4j.exceptions import ServiceUnavailable
 from neomodel import db, Relationship, StructuredNode, RelationshipManager, StructuredRel
 from neomodel.exceptions import DeflateError
 
-from .graph_models.maintenance_personnel import MaintenanceWorker, MaintenanceRecord, Capacity
+from .graph_models.maintenance_personnel import MaintenanceWorker, MaintenanceRecord, Capacity, CapacityRate, \
+	MaintenancePerformance
 
 kg_mapping = {
-	"MaintenanceWorker"	: MaintenanceWorker,
+	"MaintenanceWorker"		: MaintenanceWorker,
 	"Capacity"		   		: Capacity,
-	"MaintenanceRecord"		: MaintenanceRecord
+	"MaintenanceRecord"		: MaintenanceRecord,
+	"CapacityRate"			: CapacityRate,
+	"MaintenancePerformance": MaintenancePerformance
 }
 
 def load_excel_file_to_graph(file_path: str):
@@ -165,23 +168,41 @@ def parse_record_to_dict(record: Union[Relationship, StructuredNode]) -> Dict:
 # 		return ret_arr
 # 	except DeflateError:
 # 		return []
-def getRelNameAndEntName(ent:StructuredNode):
+
+
+def getRelEnt(class_name: str):
+	r"""
+	Args:
+		'class_name':str   # 类名
+	Returns:
+		'ret':[[]]
+		[关系名，尾实体类名]
+	"""
 	ret = []
-	for rel_name, _ in ent.__all_relationships__:
-		rel: RelationshipManager = getattr(ent, rel_name)
-		targetEnt = type(rel[0]).__name__
-		ret.append([rel_name,targetEnt])
+	start_ent_class = kg_mapping[class_name]
+	print(MaintenanceWorker.__all_relationships__)
+	for rel_name, _ in start_ent_class.__all_relationships__:
+		rel: RelationshipManager = getattr(start_ent_class, rel_name)
+		ret.append([rel_name, rel._raw_class])
 	return ret
+
+# def getRelNameAndEntName(ent:StructuredNode):
+# 	ret = []
+# 	for rel_name, _ in ent.__all_relationships__:
+# 		rel: RelationshipManager = getattr(ent, rel_name)
+# 		targetEnt = type(rel[0]).__name__
+# 		ret.append([rel_name,targetEnt])
+# 	return ret
 def EntityQueryByAtt(ent_type:str, attr:dict):
 	r"""
 	通过实体属性查询实体并返回实体所有属性值
 	"""
 	ret_arr = []
+	relations = getRelEnt(ent_type)
 	try:
 		entities = kg_mapping[ent_type].nodes.filter(**attr)
 		for ent in entities:
 			ent_dict = parse_record_to_dict(ent)
-			relations = getRelNameAndEntName(ent)
 			record = {"element_id": ent.element_id, "properties":ent_dict, "relations": relations}
 			ret_arr.append({"type": type(ent).__name__, "record": record})
 		return ret_arr
