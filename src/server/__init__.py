@@ -33,6 +33,8 @@ def read_entity(ent_type: str, data: SearchData):
     # return {"None":None, "[]":[]}
     # return {'ok': True, 'msg': 'success', 'data': ent_type}
     # print(ent_type)
+    if len(data.properties) == 0:
+        return {'ok': False, 'msg': 'properties is null', 'data': None}
     try:
         if data.relation == "None":
             ret_arr = EntityQueryByAtt(ent_type=ent_type, attr=data.properties)
