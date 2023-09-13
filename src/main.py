@@ -72,7 +72,15 @@ if __name__ == '__main__':
     with open(NEO4J_FILE_PATH, 'r', encoding='UTF-8') as fp:
         neo4j = json5.load(fp)
     connect_to_neo4j(**neo4j)
-    #
+
+    # per = MaintenanceWorker.nodes.get(id="m0001")
+    # print(MaintenanceWorker.__all_relationships__)
+    # for rel_name, _ in per.__all_relationships__:
+    #     print(rel_name)
+    #     rel: RelationshipManager = getattr(per, rel_name)
+    #     t = type(rel[0]).__name__
+    #     print(t)
+        #
     # # 导入database excel文件
     # FILE_PATH = Path(os.path.dirname(__file__))
     # FILE_PATH = FILE_PATH.parent.joinpath('data', 'database', 'Synthesis', '维保人员数据.xlsx')
@@ -85,10 +93,11 @@ if __name__ == '__main__':
     # query = {"ent_type": "Capacity", "attr": {"element_id": "4:5f68949a-747c-4cb7-bbb1-7314236ca878:61"}}
     # ret = EntityQueryByAtt(**query)
     # print(ret)
-    # query = {"ent_type": "MaintenanceWorker", "attr": {"id": "m0001"},"rel_type":"MaintenancePerformance"}
-    # ret2 = RelQueryByEnt(**query)
+    # query = {"ent_type": "MaintenanceWorker", "attr": {"id": "m0001"}}
+    # ret2 = EntityQueryByAtt(**query)
     # print(ret2)
     # query = {"ent_type": "Capacity", "attr": {"name": "轨道维修"}, "rel_type": None}
+    # query = {"ent_type": "MaintenanceWorker", "attr": {"id": "m0001"}, "rel_type": None}
     # ret1 = RelQueryByEnt(**query)
     # print(ret1)
     # persons = MaintenanceWorker.nodes.filter(id =  "m0001")

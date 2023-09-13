@@ -110,7 +110,7 @@ def load_excel_file_to_graph(file_path: str):
 				rel.save()
 		except Exception as e:
 			record = MaintenanceRecord(**data_dict)
-			# print("ttt",record)
+			print("ttt",record)
 			record.save()
 			rel  = record.MaintenancePerformance.connect( MaintenanceWorker.nodes.get(id=row_dict['工号']), {
 				'malfunc_type': record.malfunction,  # 维修记录故障内容记录故障类型
@@ -165,6 +165,13 @@ def parse_record_to_dict(record: Union[Relationship, StructuredNode]) -> Dict:
 # 		return ret_arr
 # 	except DeflateError:
 # 		return []
+def getRelNameAndEntName(ent:StructuredNode):
+	ret = []
+	for rel_name, _ in ent.__all_relationships__:
+		rel: RelationshipManager = getattr(ent, rel_name)
+		targetEnt = type(rel[0]).__name__
+		ret.append([rel_name,targetEnt])
+	return ret
 def EntityQueryByAtt(ent_type:str, attr:dict):
 	r"""
 	通过实体属性查询实体并返回实体所有属性值
@@ -174,13 +181,15 @@ def EntityQueryByAtt(ent_type:str, attr:dict):
 		entities = kg_mapping[ent_type].nodes.filter(**attr)
 		for ent in entities:
 			ent_dict = parse_record_to_dict(ent)
-			ret_arr.append({"type": type(ent).__name__, "record": {"element_id": ent.element_id, "properties":ent_dict}})
+			relations = getRelNameAndEntName(ent)
+			record = {"element_id": ent.element_id, "properties":ent_dict, "relations": relations}
+			ret_arr.append({"type": type(ent).__name__, "record": record})
 		return ret_arr
-	except DeflateError:
-		msg = "property key error"
-		return msg
+	# except DeflateError:
+	# 	msg = f"{ent_type} not exist"
+	# 	return msg
 	except ValueError:
-		msg = f"{ent_type} not exist"
+		msg = "property key error"
 		return msg
 
 def RelQueryByEnt(ent_type:str, attr:dict, rel_type:Optional[str]):
@@ -197,7 +206,7 @@ def RelQueryByEnt(ent_type:str, attr:dict, rel_type:Optional[str]):
 		for ent in entities:
 			if rel_type is None:
 				for rel_name, _ in ent.__all_relationships__:
-					print(rel_name)
+					# print(rel_name)
 					rel: RelationshipManager = getattr(ent, rel_name)
 					ret_arr.extend(RelQueryByRel(rel_name, rel))
 			else:
@@ -206,10 +215,9 @@ def RelQueryByEnt(ent_type:str, attr:dict, rel_type:Optional[str]):
 					ret_arr.extend(RelQueryByRel(rel_type, rel))
 				except AttributeError:
 					# 关系类型错误
-					msg = "key error"
-					print(msg)
-					return None
-					# return msg
+					msg = "relationship key error"
+					# print(msg)
+					return msg
 		return ret_arr
 	except DeflateError:
 		pass
@@ -223,10 +231,14 @@ def RelQueryByRel(rel_type: str, rel :RelationshipManager):
 		record1 = {"source": source, "target": target, "properties": properties}
 		ret_arr.append({"type": type(edge).__name__, "record": record1})
 
-		if source['type'] == rel_type:
-			record2 = {"element_id": edge._end_node_element_id, "record": parse_record_to_dict(edge.end_node())}
-			ret_arr.append({"type": type(edge.end_node()).__name__, "record": record2})
-		else:
-			record2 = {"element_id": edge._start_node_element_id, "record": parse_record_to_dict(edge.start_node())}
-			ret_arr.append({"type": type(edge.start_node()).__name__, "record": record2})
+		# print("test" ,type(node).__name__,node.element_id,parse_record_to_dict(node))
+
+		record2 = {"element_id":node.element_id,"record":parse_record_to_dict(node)}
+		ret_arr.append({"type": type(node).__name__, "record": record2})
+		# if source['type'] == rel_type:
+		# 	record2 = {"element_id": edge._end_node_element_id, "record": parse_record_to_dict(edge.end_node())}
+		# 	ret_arr.append({"type": type(edge.end_node()).__name__, "record": record2})
+		# else:
+		# 	record2 = {"element_id": edge._start_node_element_id, "record": parse_record_to_dict(edge.start_node())}
+		# 	ret_arr.append({"type": type(edge.start_node()).__name__, "record": record2})
 	return ret_arr
