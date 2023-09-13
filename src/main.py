@@ -9,7 +9,7 @@
 # # src pckages
 # from controller import KGConstructionController, NerTypes, ReTypes
 # from controller.contruction_model_types import NerModelComposition, ReModelComposition
-# from utils.animator import Animator
+# from utils.animator import Animator,
 #
 # # 配置文件目录
 # # 以下路径宏都是相对于项目目录 SubwayMaintenancePersonnelKnowledgeGraphGeneration
@@ -56,14 +56,11 @@ import uvicorn
 from pathlib import Path
 import os
 from database.utils import load_excel_file_to_graph, EntityQueryByAtt, parse_record_to_dict,  \
-    RelQueryByEnt
+    RelQueryByEnt, getRelEnt, get_time_key
 from database import connect_to_neo4j
 import json5
 from database import MaintenanceWorker, Capacity, CapacityRate, MaintenanceRecord
-from neomodel import db, RelationshipManager, Relationship, StructuredNode
-
-
-
+from neomodel import db, RelationshipManager, Relationship, StructuredNode, DateTimeFormatProperty, DateTimeProperty
 
 if __name__ == '__main__':
 
@@ -72,12 +69,29 @@ if __name__ == '__main__':
     with open(NEO4J_FILE_PATH, 'r', encoding='UTF-8') as fp:
         neo4j = json5.load(fp)
     connect_to_neo4j(**neo4j)
-    #
+
     # # 导入database excel文件
     # FILE_PATH = Path(os.path.dirname(__file__))
     # FILE_PATH = FILE_PATH.parent.joinpath('data', 'database', 'Synthesis', '维保人员数据.xlsx')
     # load_excel_file_to_graph(FILE_PATH)
+
+    # 使用 vars() 函数获取属性信息
+    # print(get_time_key(MaintenanceRecord))
     #
+    import datetime
+
+    search_date_str = "1980-05-02 00:00:00"
+    # search_date = datetime.datetime.strptime(search_date_str, "%Y-%m-%d %H:%M:%S")
+    # # for
+    # print(type(MaintenanceWorker.employ_date).__name__)
+
+    # print(search_date)
+    # attr = {"ent_type": "MaintenanceRecord", "attr": {"begin_time": '2022-01-01 11:25:00 xxx'}}
+    # persons = EntityQueryByAtt(**attr)
+    # for person in persons:
+    #     print(person)
+    # for perp in per:
+    #     print(perp)
     uvicorn.run("server:app", port=5200, log_level="info")
     # query = {"ent_type": "MaintenanceWorker", "attr": {"work_post": "车辆维修技术员"}}
     # query = {"ent_type": "Capacity", "attr": {"name": "轨道维修"}}
@@ -85,10 +99,11 @@ if __name__ == '__main__':
     # query = {"ent_type": "Capacity", "attr": {"element_id": "4:5f68949a-747c-4cb7-bbb1-7314236ca878:61"}}
     # ret = EntityQueryByAtt(**query)
     # print(ret)
-    # query = {"ent_type": "MaintenanceWorker", "attr": {"id": "m0001"},"rel_type":"MaintenancePerformance"}
-    # ret2 = RelQueryByEnt(**query)
+    # query = {"ent_type": "MaintenanceWorker", "attr": {"id": "m0001"}}
+    # ret2 = EntityQueryByAtt(**query)
     # print(ret2)
     # query = {"ent_type": "Capacity", "attr": {"name": "轨道维修"}, "rel_type": None}
+    # query = {"ent_type": "MaintenanceWorker", "attr": {"id": "m0001"}, "rel_type": None}
     # ret1 = RelQueryByEnt(**query)
     # print(ret1)
     # persons = MaintenanceWorker.nodes.filter(id =  "m0001")

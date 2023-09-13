@@ -3,6 +3,7 @@ r"""
 1.读人工制定excel文件内容到图谱中
 
 """
+import datetime
 from typing import Union, Dict, List, Optional
 
 import pandas as pd
@@ -10,12 +11,15 @@ from neo4j.exceptions import ServiceUnavailable
 from neomodel import db, Relationship, StructuredNode, RelationshipManager, StructuredRel
 from neomodel.exceptions import DeflateError
 
-from .graph_models.maintenance_personnel import MaintenanceWorker, MaintenanceRecord, Capacity
+from .graph_models.maintenance_personnel import MaintenanceWorker, MaintenanceRecord, Capacity, CapacityRate, \
+	MaintenancePerformance
 
 kg_mapping = {
-	"MaintenanceWorker"	: MaintenanceWorker,
+	"MaintenanceWorker"		: MaintenanceWorker,
 	"Capacity"		   		: Capacity,
-	"MaintenanceRecord"		: MaintenanceRecord
+	"MaintenanceRecord"		: MaintenanceRecord,
+	"CapacityRate"			: CapacityRate,
+	"MaintenancePerformance": MaintenancePerformance
 }
 
 def load_excel_file_to_graph(file_path: str):
@@ -110,7 +114,7 @@ def load_excel_file_to_graph(file_path: str):
 				rel.save()
 		except Exception as e:
 			record = MaintenanceRecord(**data_dict)
-			# print("ttt",record)
+			print("ttt",record)
 			record.save()
 			rel  = record.MaintenancePerformance.connect( MaintenanceWorker.nodes.get(id=row_dict['工号']), {
 				'malfunc_type': record.malfunction,  # 维修记录故障内容记录故障类型
@@ -140,7 +144,7 @@ def load_excel_file_to_graph(file_path: str):
 		except DeflateError:
 			pass
 
-def parse_record_to_dict(record: Union[Relationship, StructuredNode]) -> Dict:
+def parse_record_to_dict(record: Union[Relationship, StructuredNode, StructuredRel]) -> Dict:
 	r"""
 	Args:
 		'record': entity | relationship
@@ -165,22 +169,60 @@ def parse_record_to_dict(record: Union[Relationship, StructuredNode]) -> Dict:
 # 		return ret_arr
 # 	except DeflateError:
 # 		return []
+
+
+def getRelEnt(class_name: str):
+	r"""
+	Args:
+		'class_name':str   # 类名
+	Returns:
+		'ret':[[]]
+		[关系名，尾实体类名]
+	"""
+	ret = []
+	start_ent_class = kg_mapping[class_name]
+	print(MaintenanceWorker.__all_relationships__)
+	for rel_name, _ in start_ent_class.__all_relationships__:
+		rel: RelationshipManager = getattr(start_ent_class, rel_name)
+		ret.append([rel_name, rel._raw_class])
+	return ret
+
+# def getRelNameAndEntName(ent:StructuredNode):
+# 	ret = []
+# 	for rel_name, _ in ent.__all_relationships__:
+# 		rel: RelationshipManager = getattr(ent, rel_name)
+# 		targetEnt = type(rel[0]).__name__
+# 		ret.append([rel_name,targetEnt])
+# 	return ret
 def EntityQueryByAtt(ent_type:str, attr:dict):
 	r"""
 	通过实体属性查询实体并返回实体所有属性值
 	"""
 	ret_arr = []
+	relations = getRelEnt(ent_type)
 	try:
+		# 时间类型字段处理
+		ent_class = kg_mapping[ent_type]
+		time_key = get_time_key(ent_class)
+		for k in attr.keys():
+			if k in time_key:
+				try:
+					attr[k] = datetime.datetime.strptime(attr[k], "%Y-%m-%d %H:%M:%S")
+				except ValueError:
+					msg = "time format error, it should be %Y-%m-%d %H:%M:%S"
+					return msg
+
 		entities = kg_mapping[ent_type].nodes.filter(**attr)
 		for ent in entities:
 			ent_dict = parse_record_to_dict(ent)
-			ret_arr.append({"type": type(ent).__name__, "record": {"element_id": ent.element_id, "properties":ent_dict}})
+			record = {"element_id": ent.element_id, "properties":ent_dict, "relations": relations}
+			ret_arr.append({"type": type(ent).__name__, "record": record})
 		return ret_arr
-	except DeflateError:
-		msg = "property key error"
-		return msg
+	# except DeflateError:
+	# 	msg = f"{ent_type} not exist"
+	# 	return msg
 	except ValueError:
-		msg = f"{ent_type} not exist"
+		msg = "property key error"
 		return msg
 
 def RelQueryByEnt(ent_type:str, attr:dict, rel_type:Optional[str]):
@@ -193,11 +235,17 @@ def RelQueryByEnt(ent_type:str, attr:dict, rel_type:Optional[str]):
 	"""
 	ret_arr = []
 	try:
+		ent_class = kg_mapping[ent_type]
+		time_key = get_time_key(ent_class)
+		for k in attr.keys():
+			if  k in time_key:
+				attr[k] = datetime.datetime.strptime(attr[k], "%Y-%m-%d %H:%M:%S")
+
 		entities = kg_mapping[ent_type].nodes.filter(**attr)
 		for ent in entities:
 			if rel_type is None:
 				for rel_name, _ in ent.__all_relationships__:
-					print(rel_name)
+					# print(rel_name)
 					rel: RelationshipManager = getattr(ent, rel_name)
 					ret_arr.extend(RelQueryByRel(rel_name, rel))
 			else:
@@ -206,10 +254,9 @@ def RelQueryByEnt(ent_type:str, attr:dict, rel_type:Optional[str]):
 					ret_arr.extend(RelQueryByRel(rel_type, rel))
 				except AttributeError:
 					# 关系类型错误
-					msg = "key error"
-					print(msg)
-					return None
-					# return msg
+					msg = "relationship key error"
+					# print(msg)
+					return msg
 		return ret_arr
 	except DeflateError:
 		pass
@@ -223,10 +270,38 @@ def RelQueryByRel(rel_type: str, rel :RelationshipManager):
 		record1 = {"source": source, "target": target, "properties": properties}
 		ret_arr.append({"type": type(edge).__name__, "record": record1})
 
-		if source['type'] == rel_type:
-			record2 = {"element_id": edge._end_node_element_id, "record": parse_record_to_dict(edge.end_node())}
-			ret_arr.append({"type": type(edge.end_node()).__name__, "record": record2})
-		else:
-			record2 = {"element_id": edge._start_node_element_id, "record": parse_record_to_dict(edge.start_node())}
-			ret_arr.append({"type": type(edge.start_node()).__name__, "record": record2})
+		# print("test" ,type(node).__name__,node.element_id,parse_record_to_dict(node))
+
+		record2 = {"element_id":node.element_id,"record":parse_record_to_dict(node)}
+		ret_arr.append({"type": type(node).__name__, "record": record2})
+		# if source['type'] == rel_type:
+		# 	record2 = {"element_id": edge._end_node_element_id, "record": parse_record_to_dict(edge.end_node())}
+		# 	ret_arr.append({"type": type(edge.end_node()).__name__, "record": record2})
+		# else:
+		# 	record2 = {"element_id": edge._start_node_element_id, "record": parse_record_to_dict(edge.start_node())}
+		# 	ret_arr.append({"type": type(edge.start_node()).__name__, "record": record2})
 	return ret_arr
+
+
+def get_time_key(ent_class: Union[StructuredNode, StructuredRel]):
+	r"""
+	得到类的时间属性字段
+	"""
+	attributes = ent_class.__all_properties__
+	time_att = []
+	for att_name, att_value in attributes:
+		if type(att_value).__name__ in ['DateProperty', 'DateTimeFormatProperty']:
+			time_att.append(att_name)
+	return time_att
+
+
+def handle_time_key(ent_type: str, attr: Dict):
+	r"""
+	时间类型字段处理
+	"""
+	ent_class = kg_mapping[ent_type]
+	time_key = get_time_key(ent_class)
+	for k in attr.keys():
+		if k in time_key:
+			attr[k] = datetime.datetime.strptime(attr[k], "%Y-%m-%d %H:%M:%S")
+	return attr

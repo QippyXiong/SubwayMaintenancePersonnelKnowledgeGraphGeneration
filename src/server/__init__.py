@@ -11,7 +11,7 @@ app = FastAPI()
 
 
 from database import MaintenanceWorker, Capacity
-from database.utils import EntityQueryByAtt, RelQueryByEnt
+from database.utils import EntityQueryByAtt, RelQueryByEnt,get_time_key
 
 @app.get("/")
 def read_root():
@@ -41,25 +41,19 @@ def read_entity(ent_type: str, data: SearchData):
             if any(ret_arr):
                 return {'ok': True, 'msg': 'success', 'data': ret_arr}
             else:
-                return {'ok': False, 'msg': f'{ent_type} not exsists', 'data': ret_arr}
+                return {'ok': False, 'msg': f'{ent_type} not exsists', 'data': None}
         if data.relation == "All":
-            ret_arr = RelQueryByEnt(ent_type=ent_type, attr=data.properties, rel_type=data.relation)
-            if isinstance(ret_arr, str):
-                return {'ok': False, 'msg': ret_arr, 'data': None}
-            if any(ret_arr):
-                return {'ok': True, 'msg': 'success', 'data': ret_arr}
-            else:
-                return {'ok': False, 'msg': f'{ent_type} not exsists', 'data': None}
-        else:
             ret_arr = RelQueryByEnt(ent_type=ent_type, attr=data.properties, rel_type=None)
-            if isinstance(ret_arr, str):
-                return {'ok': False, 'msg': ret_arr, 'data': None}
-            if any(ret_arr):
-                return {'ok': True, 'msg': 'success', 'data': ret_arr}
-            else:
-                return {'ok': False, 'msg': f'{ent_type} not exsists', 'data': None}
+        else:
+            ret_arr = RelQueryByEnt(ent_type=ent_type, attr=data.properties, rel_type=data.relation)
+        if isinstance(ret_arr, str):
+            return {'ok': False, 'msg': ret_arr, 'data': None}
+        if any(ret_arr):
+            return {'ok': True, 'msg': 'success', 'data': ret_arr}
+        else:
+            return {'ok': False, 'msg': data.relation + " not exsists" if data.relation else f"this {ent_type} has no relation", 'data': None}
     except Exception as e:
-        return {"error": "Validation error", "details": str(e)}
+        return {'ok': False, "msg": str(e), 'data': None}
 
 class MaintenaceWorkerSearchData(BaseModel):
     key: str
