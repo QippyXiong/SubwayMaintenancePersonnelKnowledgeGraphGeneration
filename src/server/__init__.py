@@ -11,7 +11,7 @@ app = FastAPI()
 
 
 from database import MaintenanceWorker, Capacity
-from database.utils import EntityQueryByAtt, RelQueryByEnt,get_time_key
+from database.utils import EntityQueryByAtt, RelQueryByEnt, getRelEnt
 
 @app.get("/")
 def read_root():
@@ -170,3 +170,11 @@ def read_worker(data: MaintenaceWorkerSearchData):
     except ValueError:
             return{'ok': False, 'msg': 'query key error', 'data': None}
 
+@app.get('/search/relations/{ent_type}')
+def read_relations(ent_type: str):
+    try:
+        ret_val = getRelEnt(ent_type)
+    except Exception as e:
+        return { 'ok': False, 'msg': str(e), 'data': None }
+    
+    return {'ok': True, 'msg': 'success', 'data': ret_val}

@@ -114,7 +114,7 @@ def load_excel_file_to_graph(file_path: str):
 				rel.save()
 		except Exception as e:
 			record = MaintenanceRecord(**data_dict)
-			print("ttt",record)
+			# print("ttt",record)
 			record.save()
 			rel  = record.MaintenancePerformance.connect( MaintenanceWorker.nodes.get(id=row_dict['工号']), {
 				'malfunc_type': record.malfunction,  # 维修记录故障内容记录故障类型
@@ -181,7 +181,7 @@ def getRelEnt(class_name: str):
 	"""
 	ret = []
 	start_ent_class = kg_mapping[class_name]
-	print(MaintenanceWorker.__all_relationships__)
+	# print(MaintenanceWorker.__all_relationships__)
 	for rel_name, _ in start_ent_class.__all_relationships__:
 		rel: RelationshipManager = getattr(start_ent_class, rel_name)
 		ret.append([rel_name, rel._raw_class])
@@ -202,15 +202,16 @@ def EntityQueryByAtt(ent_type:str, attr:dict):
 	relations = getRelEnt(ent_type)
 	try:
 		# 时间类型字段处理
-		ent_class = kg_mapping[ent_type]
-		time_key = get_time_key(ent_class)
-		for k in attr.keys():
-			if k in time_key:
-				try:
-					attr[k] = datetime.datetime.strptime(attr[k], "%Y-%m-%d %H:%M:%S")
-				except ValueError:
-					msg = "time format error, it should be %Y-%m-%d %H:%M:%S"
-					return msg
+		# ent_class = kg_mapping[ent_type]
+		# time_key = get_time_key(ent_class)
+		# for k in attr.keys():
+		# 	if k in time_key:
+		# 		try:
+		# 			attr[k] = datetime.datetime.strptime(attr[k], "%Y-%m-%d %H:%M:%S")
+		# 		except ValueError:
+		# 			msg = "time format error, it should be %Y-%m-%d %H:%M:%S"
+		# 			return msg
+		attr = handle_time_key(ent_type, attr)
 
 		entities = kg_mapping[ent_type].nodes.filter(**attr)
 		for ent in entities:
@@ -235,11 +236,12 @@ def RelQueryByEnt(ent_type:str, attr:dict, rel_type:Optional[str]):
 	"""
 	ret_arr = []
 	try:
-		ent_class = kg_mapping[ent_type]
-		time_key = get_time_key(ent_class)
-		for k in attr.keys():
-			if  k in time_key:
-				attr[k] = datetime.datetime.strptime(attr[k], "%Y-%m-%d %H:%M:%S")
+		# ent_class = kg_mapping[ent_type]
+		# time_key = get_time_key(ent_class)
+		# for k in attr.keys():
+		# 	if  k in time_key:
+		# 		attr[k] = datetime.datetime.strptime(attr[k], "%Y-%m-%d %H:%M:%S")
+		attr = handle_time_key(ent_type, attr)
 
 		entities = kg_mapping[ent_type].nodes.filter(**attr)
 		for ent in entities:
@@ -291,7 +293,7 @@ def get_time_key(ent_class: Union[StructuredNode, StructuredRel]):
 	time_att = []
 	for att_name, att_value in attributes:
 		if type(att_value).__name__ in ['DateProperty', 'DateTimeFormatProperty']:
-			time_att.append(att_name)
+			time_att.append((att_name, type(att_value).__name__))
 	return time_att
 
 
@@ -301,7 +303,14 @@ def handle_time_key(ent_type: str, attr: Dict):
 	"""
 	ent_class = kg_mapping[ent_type]
 	time_key = get_time_key(ent_class)
-	for k in attr.keys():
-		if k in time_key:
+	# for k in attr.keys():
+	# 	if k in time_key:
+	# 		attr[k] = datetime.datetime.strptime(attr[k], "%Y-%m-%d %H:%M:%S")
+	attr_keys = list(attr.keys())
+	for k, t in time_key:
+		if k not in attr_keys: continue # @TODO: optimize
+		if t == 'DateProperty':
+			attr[k] = datetime.datetime.strptime(attr[k], "%Y-%m-%d")
+		elif t == 'DateTimeFormatProperty':
 			attr[k] = datetime.datetime.strptime(attr[k], "%Y-%m-%d %H:%M:%S")
 	return attr

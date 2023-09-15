@@ -60,7 +60,7 @@ class DuIESchema:
 class DuIEReLabelTranser:
 
     def __init__(self, max_length: int = None) -> None:
-        self.labels = ['毕业院校', '嘉宾', '配音', '主题曲', '代言人', '所属专辑', '父亲', '作者', '上映时间', '母亲', '专业代码', '占地面积', '邮政编码', '票房', '注册资本', '主角', '妻子', '编剧', '气候', '歌手', '获奖', '校长', '创始人', '首都', '丈夫', '朝代', '饰演', '面积', '总部地点', '祖籍', '人口数量', '制片人', '修业年限', '所在城市', '董事长', '作词', '改编自', '出品公司', '导演', '作曲', '主演', '主持人', '成立日期', '简称', '海拔', '号', '国籍', '官方语言']
+        self.labels = ['没关系', '毕业院校', '嘉宾', '配音', '主题曲', '代言人', '所属专辑', '父亲', '作者', '上映时间', '母亲', '专业代码', '占地面积', '邮政编码', '票房', '注册资本', '主角', '妻子', '编剧', '气候', '歌手', '获奖', '校长', '创始人', '首都', '丈夫', '朝代', '饰演', '面积', '总部地点', '祖籍', '人口数量', '制片人', '修业年限', '所在城市', '董事长', '作词', '改编自', '出品公司', '导演', '作曲', '主演', '主持人', '成立日期', '简称', '海拔', '号', '国籍', '官方语言']
         if max_length: self.labels = self.labels[0: max_length]
         self.labels_dict = { label: i for i, label in enumerate(self.labels) }
     
@@ -87,25 +87,47 @@ class DuIEReDataSet(Dataset):
     def __init__(self, file_path: str, encoder: Callable[[str, DuIEData.SpoData], Any] = None, max_length: int = None) -> None:
         r"""
         Args:
-            `encoder`: (text, SpoData) -> Any
+            `encoder`: `(text, SpoData) -> Any`
+
             `max_length`: 最多有几种label，因为这个数据集比较可观（49种label），输入后会舍弃掉后面的label
         """
         super().__init__()
         self.encoder = encoder
         self.data = []
         self.transer = DuIEReLabelTranser(max_length)
+        no_rel_label = self.transer.get_labels()[0]
         with open(file_path, 'r', encoding='UTF-8') as fp:
             lines = fp.readlines()
             for line in tqdm(lines, f'reading data'):
                 data: DuIEData = DuIEData.from_json(line)
-                for spo in data.spo_list:
-                    # 避免subject == '' or object == ''
-                    if spo.subject and spo.object['@value']:
-                        if max_length:
-                            if spo.predicate in self.transer.labels():
-                                self.data.append((data.text, spo))
-                        else:
-                            self.data.append((data.text, spo))
+                # 过滤掉实体为空的数据
+                data.spo_list = [spo for spo in data.spo_list if spo.subject != '' and spo.object['@value'] != '']
+
+                one_line_data = [(data.text, spo) for spo in data.spo_list]
+                # 数据中不存在关系的实体没有关系
+                for i in range(len(data.spo_list) + 1):
+                    for j in range(i+1, len(data.spo_list)):
+                        one_line_data.append((
+                            data.text,
+                            DuIEData.SpoData(
+                                predicate=no_rel_label,
+                                subject=data.spo_list[i].subject,
+                                subject_type=data.spo_list[i].subject_type,
+                                object=data.spo_list[j].object,
+                                object_type=data.spo_list[j].object_type
+                            )
+                        ))
+                # 主体和客体反向后也没有关系
+                one_line_data += [(data.text,
+                    DuIEData.SpoData(
+                        predicate=no_rel_label,
+                        object={ '@value': spo.subject },
+                        object_type={ '@value': spo.subject_type },
+                        subject_type=spo.object_type['@value'],
+                        subject=spo.object['@value']
+                    )
+                ) for spo in data.spo_list]
+                self.data += one_line_data
         return
     
     def __len__(self) -> int:
