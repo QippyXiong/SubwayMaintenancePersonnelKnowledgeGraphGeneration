@@ -51,7 +51,7 @@ def read_entity(ent_type: str, data: SearchData):
         if any(ret_arr):
             return {'ok': True, 'msg': 'success', 'data': ret_arr}
         else:
-            return {'ok': False, 'msg': f'{ent_type} not exsists', 'data': None}
+            return {'ok': False, 'msg': data.relation + " not exsists" if data.relation else f"this {ent_type} has no relation", 'data': None}
     except Exception as e:
         return {'ok': False, "msg": str(e), 'data': None}
 
