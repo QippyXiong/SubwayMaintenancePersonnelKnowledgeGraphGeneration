@@ -100,6 +100,8 @@ class Relation:
 
 def convert_label_seq_to_entity_pos(sentence: str, label_seq: list[str]) -> list[NerEntity]:
     r""" 将 B-I 格式的标记序列转换成用（实体，实体类型，位置）标记数组 """
+    if len(sentence) != len(label_seq):
+        print("sentence length unequal label length")
     begin_index = 0
     entity = ''
     entity_type = ''

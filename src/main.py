@@ -44,14 +44,15 @@ class Implement(KGConstructionController):
         num_epochs = composition.model.params.train_params.num_epochs
         self.ani.clear()
         self.ani.x_lim=[0, num_epochs * len(loader)]
+        self.save_step = 10
 
     def train_re_handler(self, epoch: int, total_step: int, loss: float, pred: list[int], label: list[int]) -> None:
         self.ani.add(total_step, loss)
-        if total_step % 2000 == 0:
+        if total_step % self.save_step == 0:
             self.save_re_model(0)
             self.ani.save_img(PROJ_DIR.joinpath('re_train_loss.png'))
 
-from typing import Union, Dict
+from typing import Union, Dict, overload
 
 # from typing import Union
 
@@ -75,10 +76,10 @@ if __name__ == '__main__':
     #     neo4j = json5.load(fp)
     # connect_to_neo4j(**neo4j)
     impl = Implement()
-    id = impl.init_re(ReTypes.BERT_SOFTMAX)
-    t = Thread(target=lambda: impl.train_re(id))
+    id = impl.init_ner(NerTypes.BERT_BILSTM_CRF)
+    t = Thread(target=lambda: impl.train_ner(id, num_workers=2))
     t.start()
     impl.ani.show()
     t.join()
-    impl.save_re_model(id)
-    print(impl.train_re(id))
+    print(impl.valid_ner(id))
+    

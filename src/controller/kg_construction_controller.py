@@ -330,7 +330,7 @@ class KGConstructionController:
                 )
             if isinstance(r, Tensor):
                 r = r.tolist()
-            return transer.id2label(r[0])[1:]
+            return transer.id2label(r[0])[1:-1]
         # elif ...
         else:
             raise TypeError('unkown ner model type')
@@ -414,7 +414,9 @@ class KGConstructionController:
         targets = transer.id2label(targets)
         preds =  transer.id2label(preds)
 
-        return re_valid_report(targets, preds, output_dict=output_dict)
+        valid_text = re_valid_report(targets, preds, output_dict=output_dict)
+        composition.model.set_report(valid_text)
+        return valid_text
         
 
     def train_re(self, index: int = 0, device = 'cuda:0', num_workers: int = 0) -> None:
@@ -428,7 +430,7 @@ class KGConstructionController:
             composition.model,
             train_loader,
             device=device,
-            each_step_callback=self.train_ner_handler
+            each_step_callback=self.train_re_handler
         )
 
 
@@ -450,11 +452,10 @@ class KGConstructionController:
 
 
     def load_ner_model(self, model_name: str) -> None:
-        for i, c in enumerate(model_name[::-1]):
-            if c == '.':
-                name = model_name[0:i]
-                type_name = model_name[i+1:]
-
+        name_list = model_name.split('.')
+        name = ''.join(name_list[:-1])
+        type_name = name_list[-1]
+        print('[Model Controller]load ner model %s(%s)'%(name, type_name))
         if type_name == 'BertBilstmNerModel':
             model = BertBilstmNerModel.load( self.NER_SAVE_DIR.joinpath(model_name) , self.BERT_DIR)
             model.params.name = name
@@ -463,8 +464,9 @@ class KGConstructionController:
                 bert_url= self.BERT_DIR.joinpath(params.hyper_params.bert),
                 seq_len=params.hyper_params.seq_len
             )
-            self.add_ner(model, embedder=embedder)
-            return
+            return self.add_ner(model, embedder=embedder)
+        else:
+            raise TypeError("Unkown ner model type")
 
 
     def load_re_model(self, model_name: str) -> int:
@@ -474,7 +476,7 @@ class KGConstructionController:
         name_list = model_name.split('.')
         name = ''.join(name_list[:-1])
         type_name = name_list[-1]
-        print('loading re model %s(%s)'%(name, type_name))
+        print('[Model Controller]load re model %s(%s)'%(name, type_name))
         if type_name == 'SoftmaxReModel':
             model = SoftmaxReModel.load( self.RE_SAVE_DIR.joinpath(model_name), self.BERT_DIR )
             params = model.params
@@ -482,11 +484,20 @@ class KGConstructionController:
                 bert_url= self.BERT_DIR.joinpath(params.hyper_params.bert),
                 seq_len=params.hyper_params.seq_len
             )
-            self.add_re(model, embedder=embedder)
-            return len(self.re_model_list) - 1
+            return self.add_re(model, embedder=embedder)
+        
+        else:
+            raise TypeError("Unkown re model type")
+
     
 
     def ner_re_joint_predicate(self, sentence: str, ner_index: int, re_index: int) -> tuple[list[NerEntity], list[Relation]]:
+        r"""
+        Args:
+            sentence: 输入的句子
+            ner_index: ner模型对应下标/id
+            re_index: re模型对应下标/id
+        """
         ner_labels = self.ner_predicate(ner_index, sentence)
         entity_array = convert_label_seq_to_entity_pos(sentence, ner_labels)
 
@@ -494,15 +505,18 @@ class KGConstructionController:
         for i, subject in enumerate(entity_array):
             for object in entity_array[i+1:]:
                 rel = self.re_predicate(re_index, sentence, subject.entity, object.entity)
-                relations.append( subject, rel, object )
-        entity_array = entity_array[::-1]
+                if rel == '没关系':
+                    continue
+                relations.append( Relation(subject, rel, object) )
 
-        entity_array_reverse = entity_array.reverse()
+        entity_array_reverse = entity_array[::-1]
+
         for i, subject in enumerate(entity_array_reverse):
             for object in entity_array_reverse[i+1:]:
                 rel = self.re_predicate(re_index, sentence, subject.entity, object.entity)
-                relations.append( subject, rel, object )
-        entity_array = entity_array[::-1]
+                if rel == '没关系':
+                    continue
+                relations.append( Relation(subject, rel, object) )
 
         return entity_array, relations
             
@@ -510,19 +524,27 @@ class KGConstructionController:
     # begin implement needed APIs ----------------------------------------------------------------------------------------------------------------------
 
     def train_ner_handler(self, epoch: int, total_step: int, loss: float, pred: list[int], label: list[int]) -> None:
-        return
+        r"""
+        handler for each step of training ner model
+
+        Args:
+            epoch: number of epoch
+            total_step: 
+            loss: loss value of this evaluation
+        """
+        raise NotImplemented(f"Need to implement { type(self).__name__ }::train_ner_handler")
 
 
     def train_re_handler(self, epoch: int, total_step: int, loss: float, pred: list[int], label: list[int]) -> None:
-        return
+        raise NotImplemented(f"Need to implement { type(self).__name__ }::train_re_handler")
     
 
     def before_ner_train(self, composition: NerModelComposition, loader: DataLoader) -> None:
-        return
+        raise NotImplemented(f"Need to implement { type(self).__name__ }::before_ner_train")
     
 
     def before_re_train(self, composition: ReModelComposition, loader: DataLoader) -> None:
-        return
+        raise NotImplemented(f"Need to implement { type(self).__name__ }::before_re_train")
 
 
         

@@ -176,3 +176,13 @@ def read_relations(ent_type: str):
         return { 'ok': False, 'msg': str(e), 'data': None }
     
     return {'ok': True, 'msg': 'success', 'data': ret_val}
+
+from fastapi import WebSocket
+from fastapi.responses import HTMLResponse
+
+@app.get("/control")
+async def sendShowData(websocket: WebSocket):
+    await websocket.accept()
+    while True:
+        data = await websocket.receive_json()
+        await websocket.send_json()
