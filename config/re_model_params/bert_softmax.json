@@ -7,8 +7,8 @@
                                 
     },
     "train_params":  {
-        "batch_size"        : 6,
-        "num_epochs"        : 4,    // 数据集较小，epoch不够无法收敛
+        "batch_size"        : 32,
+        "num_epochs"        : 2,    // 数据集较小，epoch不够无法收敛
         "bert_lr"           : 1e-5,
         "linear_lr"         : 1e-5, // 偏小，要是陷入局部解就改大点
         "eps"               : 1e-8,

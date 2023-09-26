@@ -117,9 +117,9 @@ class Animator():
         plt.ioff()
 
     def close(self):
-        plt.close(self.fig)
+        plt.close()
 
-    def save_img(file_path: str):
+    def save_img(self, file_path: str):
         plt.savefig(file_path)
     
     
