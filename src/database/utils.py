@@ -43,35 +43,56 @@ def GetEntAttribute(class_name:str):
 	return ret
 
 def CreateEnt(class_name:str,attr:dict):
-	r"""根据类名和属性值创建实体"""
+	r"""
+	根据类名和属性值创建实体
+	Returns:
+		new_ent: StructuredNode/None
+		msg    : str
+	"""
 	try:
 		ent_class = kg_mapping[class_name]
 		major_key = {mk: attr[mk] for mk in kg_majorkey_mapping[class_name]}
 		major_key = handle_time_key(class_name, major_key)
 	except KeyError as e:
-		print(str(e), "not exist")
-		return
+		msg = str(e) + "not exist"
+		return None, msg
 	only_ent = ent_class.nodes.filter(**major_key)
 	if(only_ent.__nonzero__()):
 		msg = class_name + str(major_key) +" is already exist"
-		return msg
+		return None, msg
 	else:
 		attr = handle_time_key(class_name, attr)
+		for p in attr:
+			if p not in ent_class.__all_properties__:
+				msg = class_name + "has no " + p + "property."
+				return None, msg
 		new_ent = ent_class(**attr)
 		new_ent.save()
 		msg = "create " + class_name + str(major_key) + " succeed"
-		return msg
+		return new_ent, msg
 
 def CreateRel(start_ent: StructuredNode, end_ent: StructuredNode, rel_name:str, attr:dict):
+	r"""
+	Returns: True/False:bool, msg:str
+	"""
 	rel: RelationshipManager = getattr(start_ent, "CapacityRate")
+	rel_class = kg_mapping[rel_name]()
+	rel_props =rel_class.__properties__
+	for p in attr.keys():
+		if p not in rel_props.keys():
+			return False, rel_name + "has no " + p + "property."
 	edge = rel.connect(end_ent, attr)
+	return True, rel_name + str(attr) + " create successfully."
 
 def DeleteEnt(class_name:str,attr:dict):
+	r"""
+	Returns: True/False:bool, msg:str
+	"""
 	try:
 		ent_class = kg_mapping[class_name]
 	except KeyError as e:
 		msg = str(e) +  "not exist"
-		return msg
+		return False, msg
 	attr = handle_time_key(class_name, attr)
 	del_ent = ent_class.nodes.filter(**attr)
 	if(del_ent.__nonzero__()):
@@ -80,10 +101,16 @@ def DeleteEnt(class_name:str,attr:dict):
 			e.delete()
 			# s = class_name+str(parse_record_to_dict(e))
 			# msg.append(s)
-		return str(nums) +" "+ class_name + str(attr) + " is already deleted"
+		return True, str(nums) +" "+ class_name + str(attr) + " is already deleted"
 	else:
 		msg = class_name + str(attr) + " not exist"
-		return msg
+		return False, msg
+def DeleteRel(start_ent:StructuredNode, end_ent:StructuredNode, rel_name:str):
+	rel: RelationshipManager = getattr(start_ent, rel_name)
+	rel.disconnect(end_ent)
+	return True, rel_name + " is already deleted"
+
+
 
 def UpdateEnt(class_name:str, attr:dict, new_attr:dict):
 	r"""
@@ -117,7 +144,10 @@ def UpdateEnt(class_name:str, attr:dict, new_attr:dict):
 				update_ent_ = update_ent[0]
 				new_attr = handle_time_key(class_name, new_attr)
 				for key, value in new_attr.items():
-					setattr(update_ent_, key, value)
+					if key in ent_class.__all_properties__:
+						setattr(update_ent_, key, value)
+					else:
+						msg = class_name + "has no " + key + "property."
 				# print(parse_record_to_dict(update_ent_))
 				update_ent_.save()
 				msg = "The primary key of single entity has been modified"
@@ -145,12 +175,20 @@ def UpdateEnt(class_name:str, attr:dict, new_attr:dict):
 		return str(nums) +" "+ class_name + str(attr) + " is already updated"
 
 def UpdateRel(start_ent: StructuredNode, end_ent: StructuredNode, rel_name:str, attr:dict):
+	r"""
+	Returns: True/False:bool, msg:str
+	"""
 	rel: RelationshipManager = getattr(start_ent, rel_name)
+	rel_props = kg_mapping[rel_name]().__properties__
+	for p in attr.keys():
+		if p not in rel_props:
+			return False, rel_name + "has no " + p + "property."
 	edge = rel.relationship(end_ent)
 	for key, value in attr.items():
 		setattr(edge, key, value)
 	# print(parse_record_to_dict(edge))
 	edge.save()
+	return True, rel_name + str(attr) + " update successfully."
 
 
 def load_excel_file_to_graph(file_path: str):

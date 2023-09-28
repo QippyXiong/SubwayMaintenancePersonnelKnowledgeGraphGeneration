@@ -11,7 +11,9 @@ app = FastAPI()
 
 
 from database import MaintenanceWorker, Capacity
-from database.utils import EntityQueryByAtt, RelQueryByEnt, getRelEnt
+from database.utils import EntityQueryByAtt, RelQueryByEnt, getRelEnt, CreateEnt, kg_mapping, kg_majorkey_mapping, \
+    handle_time_key, CreateRel, UpdateEnt, UpdateRel, DeleteEnt, DeleteRel
+
 
 @app.get("/")
 def read_root():
@@ -56,6 +58,143 @@ def read_entity(ent_type: str, data: SearchData):
             return {'ok': False, 'msg': data.relation + " not exsists" if data.relation else f"this {ent_type} has no relation", 'data': None}
     except Exception as e:
         return {'ok': False, "msg": str(e), 'data': None}
+
+class CreateData(BaseModel):
+    class Relation:
+        link_node_type: str
+        link_node_properties: dict
+        edge_type: str
+        edge_properties: dict
+
+    node_properties  : dict
+    relation    : Union[None,list[Relation]]
+
+@app.post("/create/entity&rel/{ent_type}")
+def create_entity_rel(ent_type: str, data: CreateData):
+    _, msg = CreateEnt(class_name=ent_type,attr=data.node_properties)
+    if _ is None:
+        return {'ok': False, 'msg': msg, 'data': None}
+    else:
+        if data.relation == "None":
+            return {'ok': True, 'msg': msg, 'data': None}
+        elif isinstance(data.relation, list):
+            link_node_type = data.relation.link_node_type
+            link_node_properties = data.relation.link_node_properties
+            edge_type = data.relation.edge_type
+            edge_properties = data.relation.edge_properties
+            if link_node_type not in kg_mapping:
+                msg = msg + "\n" + link_node_type + "does not exist"
+                return {'ok': False, 'msg': msg, 'data': None}
+            if edge_type not in kg_mapping:
+                msg = msg + "\n" + edge_type + "does not exist"
+                return {'ok': False, 'msg': msg, 'data': None}
+            attr = handle_time_key(link_node_type, link_node_properties)
+            link_entities = kg_mapping[link_node_type].nodes.filter(**attr)
+            flag = True
+            for e in link_entities:
+                f, m = CreateRel(_, e, edge_type, edge_properties)
+                msg = msg + m
+                flag = flag & f
+            return {'ok': flag, 'msg': msg, 'data': None}
+
+class Rel_Data(BaseModel):
+    start_node_type: str
+    end_node_type: str
+    start_node_properties: dict
+    end_node_properties: dict
+    edge_properties: dict
+
+@app.post("/create/relationship/{rel_type}")
+def create_rel(rel_type: str, data: Rel_Data):
+    if data.start_node_type not in kg_mapping:
+        msg = data.start_node_type + "does not exist"
+        return {'ok': False, 'msg': msg, 'data': None}
+    if data.end_node_type not in kg_mapping:
+        msg = data.end_node_type + "does not exist"
+        return {'ok': False, 'msg': msg, 'data': None}
+    if rel_type not in kg_mapping:
+        msg = rel_type + "does not exist"
+        return {'ok': False, 'msg': msg, 'data': None}
+    start_attr = handle_time_key(data.start_node_type, data.start_node_properties)
+    end_attr = handle_time_key(data.end_node_type, data.end_node_properties)
+    start_entities = kg_mapping[data.start_node_type].nodes.filter(**start_attr)
+    end_entities = kg_mapping[data.end_node_type].nodes.filter(**end_attr)
+    flag = True
+    msg = ""
+    for s in start_entities:
+        for e in end_entities:
+            f, m = CreateRel(s, e, rel_type, data.edge_properties)
+            msg = msg + m
+            flag = flag & f
+    return {'ok': flag, 'msg': msg, 'data': None}
+
+class Update_Ent_Data(BaseModel):
+    properties     : dict
+    new_properties : dict
+@app.post("/update/entity/{ent_type}")
+def update_entity(ent_type: str, data: Update_Ent_Data):
+    _, msg = UpdateEnt(ent_type, data.properties, data.new_properties)
+    if _ is None:
+        return {'ok': False, 'msg': msg, 'data': None}
+    else:
+        return {'ok': True, 'msg': msg, 'data': None}
+
+@app.post("/update/relation/{rel_type}")
+def update_rel(rel_type: str, data: Rel_Data):
+    if data.start_node_type not in kg_mapping:
+        msg = data.start_node_type + "does not exist"
+        return {'ok': False, 'msg': msg, 'data': None}
+    if data.end_node_type not in kg_mapping:
+        msg = data.end_node_type + "does not exist"
+        return {'ok': False, 'msg': msg, 'data': None}
+    if rel_type not in kg_mapping:
+        msg = rel_type + "does not exist"
+        return {'ok': False, 'msg': msg, 'data': None}
+    start_attr = handle_time_key(data.start_node_type, data.start_node_properties)
+    end_attr = handle_time_key(data.end_node_type, data.end_node_properties)
+    start_entities = kg_mapping[data.start_node_type].nodes.filter(**start_attr)
+    end_entities = kg_mapping[data.end_node_type].nodes.filter(**end_attr)
+    flag = True
+    msg = ""
+    for s in start_entities:
+        for e in end_entities:
+            f, m = UpdateRel(start_entities, end_entities, rel_type, data.edge_properties)
+            msg = msg + m
+            flag = flag & f
+    return {'ok': flag, 'msg': msg, 'data': None}
+
+@app.post("/delete/relation/{rel_type}")
+def delete_entity(rel_type: str, data: Rel_Data):
+    if data.start_node_type not in kg_mapping:
+        msg = data.start_node_type + "does not exist"
+        return {'ok': False, 'msg': msg, 'data': None}
+    if data.end_node_type not in kg_mapping:
+        msg = data.end_node_type + "does not exist"
+        return {'ok': False, 'msg': msg, 'data': None}
+    if rel_type not in kg_mapping:
+        msg = rel_type + "does not exist"
+        return {'ok': False, 'msg': msg, 'data': None}
+    start_attr = handle_time_key(data.start_node_type, data.start_node_properties)
+    end_attr = handle_time_key(data.end_node_type, data.end_node_properties)
+    start_entities = kg_mapping[data.start_node_type].nodes.filter(**start_attr)
+    end_entities = kg_mapping[data.end_node_type].nodes.filter(**end_attr)
+    flag = True
+    msg = ""
+    for s in start_entities:
+        for e in end_entities:
+            f, m = DeleteRel(start_entities, end_entities, rel_type)
+            msg = msg + m
+            flag = flag & f
+    return {'ok': flag, 'msg': msg, 'data': None}
+
+@app.post("/delete/entity/{ent_type}")
+def delete_rel(ent_type: str, properties: dict):
+    _, msg = DeleteEnt(ent_type, properties)
+    if _:
+        return {'ok': True, 'msg': msg, 'data': None}
+    else:
+        return {'ok': False, 'msg': msg, 'data': None}
+
 
 class MaintenaceWorkerSearchData(BaseModel):
     key: str

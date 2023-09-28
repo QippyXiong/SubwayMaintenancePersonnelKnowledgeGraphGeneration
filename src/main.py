@@ -69,7 +69,8 @@ import uvicorn
 from pathlib import Path
 import os
 from database.utils import load_excel_file_to_graph, EntityQueryByAtt, parse_record_to_dict, \
-    RelQueryByEnt, getRelEnt, get_time_key, GetEntAttribute, CreateEnt, DeleteEnt, UpdateEnt, UpdateRel, CreateRel
+    RelQueryByEnt, getRelEnt, get_time_key, GetEntAttribute, CreateEnt, DeleteEnt, UpdateEnt, UpdateRel, CreateRel, \
+    DeleteRel
 from database import connect_to_neo4j
 import json5
 from database import MaintenanceWorker, Capacity, CapacityRate, MaintenanceRecord
@@ -85,12 +86,13 @@ if __name__ == '__main__':
 
     # att = GetEntAttribute("MaintenanceWorker")
     class_name = "MaintenanceWorker"
-    attr = {'id': "m0006"}
+    attr = {'id': "m0003"}
     attrs = {'level': "高级"}
     ret = MaintenanceWorker.nodes.filter(**attr)
     for e in ret:
         a = Capacity.nodes.get(name='轨道维修')
-        CreateRel(a, e, "CapacityRate",attrs)
+        # CreateRel(a, e, "CapacityRate",attrs)
+        DeleteRel(a, e, "CapacityRate")
         # print(edge.all())
         # edge.save()
         # edge = rel.relationship(a)
