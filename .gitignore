@@ -11,3 +11,4 @@ models/ner/*
 models/re/*
 neo4jdb.json
 .png
+apikey.json
