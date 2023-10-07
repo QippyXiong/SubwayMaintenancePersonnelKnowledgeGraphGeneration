@@ -2,7 +2,6 @@ from neomodel import (
     StructuredNode, StringProperty, StructuredRel,
     UniqueIdProperty, RelationshipFrom,RelationshipTo,Relationship,
     DateProperty, BooleanProperty,DateTimeFormatProperty
-
 	)
 
 
@@ -101,8 +100,8 @@ class MaintenanceWorker(StructuredNode):
 	work_level		= StringProperty()																	# 岗位级别
 	department 		= StringProperty(max_length=20)														# 部门
 
-	CapacityRate 	= Relationship('Capacity', 'RATE', model=CapacityRate)  							# 维修能力
-	MaintenancePerformance = Relationship('MaintenanceRecord','PERFORMED', model=MaintenancePerformance)   # 维修表现
+	CapacityRate 	= RelationshipFrom('Capacity', 'RATE', model=CapacityRate)  							# 维修能力
+	MaintenancePerformance = RelationshipTo('MaintenanceRecord','PERFORMED', model=MaintenancePerformance)   # 维修表现
 
 
 class Volunteer(StructuredNode):

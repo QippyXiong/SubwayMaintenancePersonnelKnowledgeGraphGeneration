@@ -391,11 +391,11 @@ class KGConstructionController:
             pred_labels.append(transer.id2label(pred))
         for target in targets:
             target_labels.append(transer.id2label(target))
-        
-        print(ner_valid_report(target_labels, pred_labels, output_dict=True))
-        # composition.model.set_report(json5.dumps(ner_valid_report(target_labels, pred_labels, output_dict=True)))
 
-        return ner_valid_report(target_labels, pred_labels, output_dict=output_dict)
+        report_text = ner_valid_report(target_labels, pred_labels, output_dict=False)
+        composition.model.set_report(report_text)
+
+        return report_text
 
 
     def valid_re(self, index: int, device = 'cuda:0', num_workers: int = 0, output_dict = False) -> Union[str, dict]:
@@ -455,7 +455,6 @@ class KGConstructionController:
         name_list = model_name.split('.')
         name = ''.join(name_list[:-1])
         type_name = name_list[-1]
-        print('[Model Controller]load ner model %s(%s)'%(name, type_name))
         if type_name == 'BertBilstmNerModel':
             model = BertBilstmNerModel.load( self.NER_SAVE_DIR.joinpath(model_name) , self.BERT_DIR)
             model.params.name = name
@@ -465,8 +464,10 @@ class KGConstructionController:
                 seq_len=params.hyper_params.seq_len
             )
             return self.add_ner(model, embedder=embedder)
+
         else:
-            raise TypeError("Unkown ner model type")
+            raise ValueError("Unkown ner model type")
+
 
 
     def load_re_model(self, model_name: str) -> int:
@@ -485,11 +486,6 @@ class KGConstructionController:
                 seq_len=params.hyper_params.seq_len
             )
             return self.add_re(model, embedder=embedder)
-        
-        else:
-            raise TypeError("Unkown re model type")
-
-    
 
     def ner_re_joint_predicate(self, sentence: str, ner_index: int, re_index: int) -> tuple[list[NerEntity], list[Relation]]:
         r"""
@@ -499,24 +495,24 @@ class KGConstructionController:
             re_index: re模型对应下标/id
         """
         ner_labels = self.ner_predicate(ner_index, sentence)
+        print(sentence)
+        print(ner_labels)
         entity_array = convert_label_seq_to_entity_pos(sentence, ner_labels)
 
         relations = []
         for i, subject in enumerate(entity_array):
             for object in entity_array[i+1:]:
                 rel = self.re_predicate(re_index, sentence, subject.entity, object.entity)
-                if rel == '没关系':
-                    continue
+                if rel == '没关系': continue
                 relations.append( Relation(subject, rel, object) )
 
         entity_array_reverse = entity_array[::-1]
-
         for i, subject in enumerate(entity_array_reverse):
             for object in entity_array_reverse[i+1:]:
                 rel = self.re_predicate(re_index, sentence, subject.entity, object.entity)
-                if rel == '没关系':
-                    continue
+                if rel == '没关系': continue
                 relations.append( Relation(subject, rel, object) )
+        entity_array = entity_array[::-1]
 
         return entity_array, relations
             

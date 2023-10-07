@@ -10,6 +10,7 @@ import pandas as pd
 from neo4j.exceptions import ServiceUnavailable
 from neomodel import db, Relationship, StructuredNode, RelationshipManager, StructuredRel
 from neomodel.exceptions import DeflateError
+from neomodel.match import NodeSet
 
 from .graph_models.maintenance_personnel import MaintenanceWorker, MaintenanceRecord, Capacity, CapacityRate, \
 	MaintenancePerformance
@@ -21,6 +22,174 @@ kg_mapping = {
 	"CapacityRate"			: CapacityRate,
 	"MaintenancePerformance": MaintenancePerformance
 }
+kg_majorkey_mapping = {
+	"MaintenanceWorker"		: ["id"],
+	"Capacity"		   		: ["name"],
+	"MaintenanceRecord"		: ["malfunction", "place", "malfunc_time"]
+}
+
+def GetEntAttribute(class_name:str):
+	r"""
+	Args:
+		'class_name':str   # 类名
+	Returns:
+		'ret':[[属性名，字段类型]]
+	"""
+	ent_class = kg_mapping[class_name]
+	atts = ent_class.__all_properties__
+	ret = list()
+	for att, ty in atts:
+		ret.append([att,type(ty).__name__])
+	return ret
+
+def CreateEnt(class_name:str,attr:dict):
+	r"""
+	根据类名和属性值创建实体
+	Returns:
+		new_ent: StructuredNode/None
+		msg    : str
+	"""
+	try:
+		ent_class = kg_mapping[class_name]
+		major_key = {mk: attr[mk] for mk in kg_majorkey_mapping[class_name]}
+		major_key = handle_time_key(class_name, major_key)
+	except KeyError as e:
+		msg = str(e) + "not exist"
+		return None, msg
+	only_ent = ent_class.nodes.filter(**major_key)
+	if(only_ent.__nonzero__()):
+		msg = class_name + str(major_key) +" is already exist"
+		return None, msg
+	else:
+		attr = handle_time_key(class_name, attr)
+		for p in attr:
+			if p not in ent_class.__all_properties__:
+				msg = class_name + "has no " + p + "property."
+				return None, msg
+		new_ent = ent_class(**attr)
+		new_ent.save()
+		msg = "create " + class_name + str(major_key) + " succeed"
+		return new_ent, msg
+
+def CreateRel(start_ent: StructuredNode, end_ent: StructuredNode, rel_name:str, attr:dict):
+	r"""
+	Returns: True/False:bool, msg:str
+	"""
+	rel: RelationshipManager = getattr(start_ent, "CapacityRate")
+	rel_class = kg_mapping[rel_name]()
+	rel_props =rel_class.__properties__
+	for p in attr.keys():
+		if p not in rel_props.keys():
+			return False, rel_name + "has no " + p + "property."
+	edge = rel.connect(end_ent, attr)
+	return True, rel_name + str(attr) + " create successfully."
+
+def DeleteEnt(class_name:str,attr:dict):
+	r"""
+	Returns: True/False:bool, msg:str
+	"""
+	try:
+		ent_class = kg_mapping[class_name]
+	except KeyError as e:
+		msg = str(e) +  "not exist"
+		return False, msg
+	attr = handle_time_key(class_name, attr)
+	del_ent = ent_class.nodes.filter(**attr)
+	if(del_ent.__nonzero__()):
+		nums = del_ent.__len__()
+		for e in del_ent:
+			e.delete()
+			# s = class_name+str(parse_record_to_dict(e))
+			# msg.append(s)
+		return True, str(nums) +" "+ class_name + str(attr) + " is already deleted"
+	else:
+		msg = class_name + str(attr) + " not exist"
+		return False, msg
+def DeleteRel(start_ent:StructuredNode, end_ent:StructuredNode, rel_name:str):
+	rel: RelationshipManager = getattr(start_ent, rel_name)
+	rel.disconnect(end_ent)
+	return True, rel_name + " is already deleted"
+
+
+
+def UpdateEnt(class_name:str, attr:dict, new_attr:dict):
+	r"""
+		eg: 匹配 attr:{id:"3456",name:"张三"}，修改 new_attr{name:"李四"}
+		修改主键： 判断修改后是否重复
+	"""
+
+	try:
+		ent_class = kg_mapping[class_name]
+	except KeyError as e:
+		msg = str(e)+ "not exist"
+		return msg
+
+	try:
+		# 修改主键
+		# ##修改后的实体已存在
+		major_key = {mk: new_attr[mk] for mk in kg_majorkey_mapping[class_name]}
+		major_key = handle_time_key(class_name, major_key)
+		only_ent = ent_class.nodes.filter(**major_key)
+		if (only_ent.__nonzero__()):
+			msg = class_name + str(major_key) + " is already exist"
+			return msg
+		else:
+			# 进行修改
+			attr = handle_time_key(class_name, attr)
+			update_ent = ent_class.nodes.filter(**attr)
+			nums = update_ent.__len__()
+			if nums == 1:
+				# 修改单节点
+				# ##更新属性值
+				update_ent_ = update_ent[0]
+				new_attr = handle_time_key(class_name, new_attr)
+				for key, value in new_attr.items():
+					if key in ent_class.__all_properties__:
+						setattr(update_ent_, key, value)
+					else:
+						msg = class_name + "has no " + key + "property."
+				# print(parse_record_to_dict(update_ent_))
+				update_ent_.save()
+				msg = "The primary key of single entity has been modified"
+				return msg
+			elif nums > 1:
+				# 不能同时修改多个节点的主键
+				msg = "The primary key of multiple entities cannot be modified simultaneously"
+				return msg
+			else:
+				# 需要修改的节点不存在
+				msg = "The single entity that needs to be modified, "+class_name + str(attr) + ", does not exist"
+				return msg
+	except KeyError as e:
+		# 修改非主键
+		attr = handle_time_key(class_name, attr)
+		new_attr = handle_time_key(class_name, new_attr)
+		update_ent = ent_class.nodes.filter(**attr)
+		nums = update_ent.__len__()
+		if nums > 0:
+			for e in update_ent:
+				# ##更新属性值
+				for key, value in new_attr.items():
+					setattr(e, key, value)
+				e.save()
+		return str(nums) +" "+ class_name + str(attr) + " is already updated"
+
+def UpdateRel(start_ent: StructuredNode, end_ent: StructuredNode, rel_name:str, attr:dict):
+	r"""
+	Returns: True/False:bool, msg:str
+	"""
+	rel: RelationshipManager = getattr(start_ent, rel_name)
+	rel_props = kg_mapping[rel_name]().__properties__
+	for p in attr.keys():
+		if p not in rel_props:
+			return False, rel_name + "has no " + p + "property."
+	edge = rel.relationship(end_ent)
+	for key, value in attr.items():
+		setattr(edge, key, value)
+	# print(parse_record_to_dict(edge))
+	edge.save()
+	return True, rel_name + str(attr) + " update successfully."
+
 
 def load_excel_file_to_graph(file_path: str):
 	try:
@@ -116,7 +285,7 @@ def load_excel_file_to_graph(file_path: str):
 			record = MaintenanceRecord(**data_dict)
 			# print("ttt",record)
 			record.save()
-			rel  = record.MaintenancePerformance.connect( MaintenanceWorker.nodes.get(id=row_dict['工号']), {
+			rel = record.MaintenancePerformance.connect( MaintenanceWorker.nodes.get(id=row_dict['工号']), {
 				'malfunc_type': record.malfunction,  # 维修记录故障内容记录故障类型
 				'performance': record.review  # 维修记录返修评价记录维修效果
 			 } )
@@ -137,7 +306,7 @@ def load_excel_file_to_graph(file_path: str):
 			capacity = Capacity(**data_dict)
 			capacity.save()
 		try:
-			worker2capacity  = capacity.CapacityRate.connect(MaintenanceWorker.nodes.get(id=row_dict['维保人员工号']), {
+			worker2capacity = capacity.CapacityRate.connect(MaintenanceWorker.nodes.get(id=row_dict['维保人员工号']), {
 				'level': row_dict['维修能力等级'],
 			 } )
 			worker2capacity.save()
@@ -284,7 +453,6 @@ def RelQueryByRel(rel_type: str, rel :RelationshipManager):
 		# 	ret_arr.append({"type": type(edge.start_node()).__name__, "record": record2})
 	return ret_arr
 
-
 def get_time_key(ent_class: Union[StructuredNode, StructuredRel]):
 	r"""
 	得到类的时间属性字段
@@ -295,7 +463,6 @@ def get_time_key(ent_class: Union[StructuredNode, StructuredRel]):
 		if type(att_value).__name__ in ['DateProperty', 'DateTimeFormatProperty']:
 			time_att.append((att_name, type(att_value).__name__))
 	return time_att
-
 
 def handle_time_key(ent_type: str, attr: Dict):
 	r"""
