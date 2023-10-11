@@ -70,11 +70,13 @@ from pathlib import Path
 import os
 from database.utils import load_excel_file_to_graph, EntityQueryByAtt, parse_record_to_dict, \
     RelQueryByEnt, getRelEnt, get_time_key, GetEntAttribute, CreateEnt, DeleteEnt, UpdateEnt, UpdateRel, CreateRel, \
-    DeleteRel
+    DeleteRel, GenerateCapByRecord, GenerateMulRecordByRecord
 from database import connect_to_neo4j
 import json5
 from database import MaintenanceWorker, Capacity, CapacityRate, MaintenanceRecord
 from neomodel import db, RelationshipManager, Relationship, StructuredNode, DateTimeFormatProperty, DateTimeProperty
+
+# uvicorn.run("server:app", port=5200, log_level="info")
 
 if __name__ == '__main__':
 
@@ -84,34 +86,18 @@ if __name__ == '__main__':
         neo4j = json5.load(fp)
     connect_to_neo4j(**neo4j)
 
-    # att = GetEntAttribute("MaintenanceWorker")
-    class_name = "MaintenanceWorker"
-    attr = {'id': "m0003"}
-    attrs = {'level': "高级"}
-    ret = MaintenanceWorker.nodes.filter(**attr)
-    for e in ret:
-        a = Capacity.nodes.get(name='轨道维修')
-        # CreateRel(a, e, "CapacityRate",attrs)
-        DeleteRel(a, e, "CapacityRate")
-        # print(edge.all())
-        # edge.save()
-        # edge = rel.relationship(a)
-        # for key, value in attrs.items():
-        #     setattr(edge, key, value)
-        # # print(parse_record_to_dict(edge))
-        # edge.save()
-        # UpdateRel(a, e, "CapacityRate", attrs)
-    # new_attr = {'birth': '1994-08-27'}
-    # {name: "3", rule: "1"}
-    # ret = CreateEnt(class_name, attr)
-    # print(ret)
-    # ret = DeleteEnt(class_name, attr)
-    # print(ret)
-    # ret = DeleteEnt(class_name, attr)
-    # print(ret)
-    # ret = UpdateEnt(class_name, attr, new_attr)
-    # print(ret)
-    # uvicorn.run("server:app", port=5200, log_level="info")
+    r = {
+        'person': '文雅珺',
+        'station': '铁轨维修人员',
+        'malfunc': '照明损坏',
+        'content': '轨道维修',
+        'place': '小寨站',
+        'begin_time': '2023-07-28 08:00:00',
+        'end_time': '2023-07-28 11:00:00',
+        'duration': '3小时'
+    }
+    _, msg = GenerateMulRecordByRecord(r)
+    print('main return:', msg)
 
     # impl = Implement()
     # # id = impl.init_ner(NerTypes.BERT_BILSTM_CRF)

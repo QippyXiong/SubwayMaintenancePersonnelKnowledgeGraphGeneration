@@ -28,6 +28,30 @@ kg_majorkey_mapping = {
 	"MaintenanceRecord"		: ["malfunction", "place", "malfunc_time"]
 }
 
+malfunc_capacity_mapping = {
+	"轨道损坏": "轨道维修",
+	"轮胎车轴故障": "轮胎车轴维修",
+	"车门故障": "车门维修",
+	"照明损坏": "照明维修",
+	"空调故障": "空调维修",
+	"制动系统故障": "制动系统维修",
+	"排水沟损坏": "排水系统维修",
+	"排水系统堵塞": "排水系统维修",
+	"通风系统堵塞": "通风系统维修",
+	"烟雾报警器故障": "烟雾报警器维修",
+	"紧急停车系统故障": "紧急停车系统维修",
+	"自动售票机故障": "自动售票机维修",
+	"安检设备故障": "安检设备维修",
+	"闸机故障": "闸机维修",
+	"电梯故障": "电梯维修",
+	"扶梯故障": "扶梯维修",
+	"电力系统故障": "电力系统维修",
+	"地铁信号故障": "地铁信号维修",
+	"监视系统故障": "监视系统维修"
+}
+
+
+
 def GetEntAttribute(class_name:str):
 	r"""
 	Args:
@@ -62,9 +86,10 @@ def CreateEnt(class_name:str,attr:dict):
 		return None, msg
 	else:
 		attr = handle_time_key(class_name, attr)
+		props = [name for name, type_name in ent_class.__all_properties__]
 		for p in attr:
-			if p not in ent_class.__all_properties__:
-				msg = class_name + "has no " + p + "property."
+			if p not in props:
+				msg = class_name + "has no " + p + " property."
 				return None, msg
 		new_ent = ent_class(**attr)
 		new_ent.save()
@@ -75,7 +100,7 @@ def CreateRel(start_ent: StructuredNode, end_ent: StructuredNode, rel_name:str, 
 	r"""
 	Returns: True/False:bool, msg:str
 	"""
-	rel: RelationshipManager = getattr(start_ent, "CapacityRate")
+	rel: RelationshipManager = getattr(start_ent, rel_name)
 	rel_class = kg_mapping[rel_name]()
 	rel_props =rel_class.__properties__
 	for p in attr.keys():
@@ -154,7 +179,7 @@ def UpdateEnt(class_name:str, attr:dict, new_attr:dict):
 				return msg
 			elif nums > 1:
 				# 不能同时修改多个节点的主键
-				msg = "The primary key of multiple entities cannot be modified simultaneously"
+				msg = "The primary key of multiple entities cannot be modified simaltaneously"
 				return msg
 			else:
 				# 需要修改的节点不存在
@@ -481,3 +506,45 @@ def handle_time_key(ent_type: str, attr: Dict):
 		elif t == 'DateTimeFormatProperty':
 			attr[k] = datetime.datetime.strptime(attr[k], "%Y-%m-%d %H:%M:%S")
 	return attr
+
+def GenerateCapByRecord(record:dict):
+	if "malfunc" not in record.keys() or record["malfunc"] not in malfunc_capacity_mapping.keys():
+		return False, "维修故障不存在"
+	if "person" not in record.keys():
+		return False, "维修人员字段缺失"
+	person = MaintenanceWorker.nodes.filter(name=record["person"])
+	if person.__len__() == 0:
+		return False, "维修人员不存在"
+	if person.__len__() > 1:
+		return False, "维修人员不唯一"
+	cap, _ = CreateEnt(class_name="Capacity", attr={"name": malfunc_capacity_mapping[record["malfunc"]]})
+	if cap == None:
+		cap = Capacity.nodes.get(name=malfunc_capacity_mapping[record["malfunc"]])
+	rel: RelationshipManager = getattr(person, "CapacityRate")
+	if rel.__len__() == 0:
+		CreateRel(start_ent=person[0], end_ent=cap, rel_name="CapacityRate", attr={"level": "初级"})
+	return True, "人员能力更新成功"
+
+def GenerateMulRecordByRecord(record:dict):
+	if "malfunc" not in record.keys() or record["malfunc"] not in malfunc_capacity_mapping.keys():
+		return False, "维修故障不存在"
+	if "person" not in record.keys():
+		return False, "维修人员字段缺失"
+	person = MaintenanceWorker.nodes.filter(name=record["person"])
+	if person.__len__() == 0:
+		return False, "维修人员不存在"
+	if person.__len__() > 1:
+		return False, "维修人员不唯一"
+	attr = {"malfunction": record["malfunc"], "place": record["place"],
+		    "malfunc_time": record["begin_time"], "begin_time": record["begin_time"],
+		   "complish_time": record["end_time"]}
+	malrecord, _ = CreateEnt(class_name="MaintenanceRecord", attr=attr)
+	# print(_)
+	if malrecord == None:
+		attr = handle_time_key(ent_type="MaintenanceRecord",attr=attr)
+		malrecord = MaintenanceRecord.nodes.get(**attr)
+	# print(parse_record_to_dict(malrecord))
+	rel: RelationshipManager = getattr(person, "MaintenancePerformance")
+	if rel.__len__() == 0:
+		CreateRel(start_ent=person[0], end_ent=malrecord, rel_name="MaintenancePerformance", attr={"performance": "正常"})
+	return True, "维修记录更新成功"
