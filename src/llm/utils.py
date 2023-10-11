@@ -1,21 +1,10 @@
 from typing import Union
-from dataclasses import dataclass
-
-
-class Prompt:
-	r"""
-	Prompt for LLM
-
-	
-	"""
-	
-
+import json5
 
 def extract_json(str: str, encoding='UTF-8') -> Union[dict, None]:
 	r"""
 	find the json string in str and parse it
 	"""
-	import json5
 	r"""
 	logic: using stack accept '{', '}' or '[', ']', parse the final and max '{-}' / '[-]' ones
 	"""
@@ -34,7 +23,6 @@ def extract_json(str: str, encoding='UTF-8') -> Union[dict, None]:
 			if char == '{': # matched, parse
 				try:
 					result = json5.loads(str[idx: i+1])
-					print('one: ', result)
 				except:
 					stack = [] # parse fail, this not json, that mean all before i cannot be json
 			else:  # that mean it's '[', all these context are errored
@@ -48,8 +36,7 @@ def extract_json(str: str, encoding='UTF-8') -> Union[dict, None]:
 
 			if char == '[':
 				try:
-					result = json5.loads(str[idx: i+1])
-					print('one: ', result)
+					result = json5.loads(str[idx: i+1], encoding=encoding)
 				except:
 					stack = []
 			else:

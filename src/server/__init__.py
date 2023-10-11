@@ -6,6 +6,8 @@ import json5
 
 from neomodel import DateTimeFormatProperty, db, Relationship
 
+from dataclasses import dataclass
+
 # def main():
 app = FastAPI()
 
@@ -60,6 +62,8 @@ def read_entity(ent_type: str, data: SearchData):
         return {'ok': False, "msg": str(e), 'data': None}
 
 class CreateData(BaseModel):
+
+    @dataclass
     class Relation:
         link_node_type: str
         link_node_properties: dict
@@ -327,3 +331,35 @@ async def sendShowData(websocket: WebSocket):
     while True:
         data = await websocket.receive_json()
         await websocket.send_json()
+
+
+
+r"""
+below call LLM api
+"""
+from llm import gpt_maintainance_record_extraction
+from database.utils import GenerateCapByRecord
+
+class ExtractData(BaseModel):
+    record: str
+
+
+@app.post("/llm/extract/")
+def extract_maintainance_record(data: ExtractData):
+    r"""
+    webserver post api for calling LLM for extracting maintainance record
+
+    Args:
+        data (ExtractData): only include record text for extracting
+    """
+    record = data.record
+    try:
+        infos = gpt_maintainance_record_extraction(record)
+        print(infos)
+        for info in infos:
+            ok, msg = GenerateCapByRecord(info)
+            if not ok:
+                return {'ok': False, 'msg': msg, 'data': infos }
+    except ValueError as e:
+        return {'ok': False, 'msg': str(e), 'data': infos }
+    return {'ok': True, 'msg': 'success', 'data': infos }

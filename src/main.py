@@ -71,6 +71,7 @@ import os
 from database.utils import load_excel_file_to_graph, EntityQueryByAtt, parse_record_to_dict, \
     RelQueryByEnt, getRelEnt, get_time_key, GetEntAttribute, CreateEnt, DeleteEnt, UpdateEnt, UpdateRel, CreateRel, \
     DeleteRel, GenerateCapByRecord, GenerateMulRecordByRecord
+from llm import connect_llm
 from database import connect_to_neo4j
 import json5
 from database import MaintenanceWorker, Capacity, CapacityRate, MaintenanceRecord
@@ -86,18 +87,14 @@ if __name__ == '__main__':
         neo4j = json5.load(fp)
     connect_to_neo4j(**neo4j)
 
-    r = {
-        'person': '文雅珺',
-        'station': '铁轨维修人员',
-        'malfunc': '照明损坏',
-        'content': '轨道维修',
-        'place': '小寨站',
-        'begin_time': '2023-07-28 08:00:00',
-        'end_time': '2023-07-28 11:00:00',
-        'duration': '3小时'
-    }
-    _, msg = GenerateMulRecordByRecord(r)
-    print('main return:', msg)
+    # 连接llm
+    LLM_FILE_PATH = Path(os.path.dirname(__file__)).parent.joinpath('config', 'openai', 'apikey.json')
+    with open(LLM_FILE_PATH, 'r', encoding='UTF-8') as fp:
+        llm = json5.load(fp)
+    connect_llm("openai", **llm)
+
+    # activate server
+    uvicorn.run("server:app", port=5200, log_level="info")
 
     # impl = Implement()
     # # id = impl.init_ner(NerTypes.BERT_BILSTM_CRF)

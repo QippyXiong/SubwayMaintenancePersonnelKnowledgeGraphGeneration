@@ -10,5 +10,5 @@ db.json
 models/ner/*
 models/re/*
 neo4jdb.json
-.png
+*.png
 apikey.json

@@ -525,7 +525,11 @@ def GenerateCapByRecord(record:dict):
 		CreateRel(start_ent=person[0], end_ent=cap, rel_name="CapacityRate", attr={"level": "初级"})
 	return True, "人员能力更新成功"
 
-def GenerateMulRecordByRecord(record:dict):
+
+def GenerateMulRecordByRecord(record:dict) -> tuple[bool, str]:
+	r"""
+	
+	"""
 	if "malfunc" not in record.keys() or record["malfunc"] not in malfunc_capacity_mapping.keys():
 		return False, "维修故障不存在"
 	if "person" not in record.keys():
