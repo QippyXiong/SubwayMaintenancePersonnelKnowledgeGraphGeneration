@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 # src pckages
 from controller import KGConstructionController, NerTypes, ReTypes
 from controller.contruction_model_types import NerModelComposition, ReModelComposition
+from src.server import read_entity
 from utils.animator import Animator
 
 # 配置文件目录
@@ -95,6 +96,16 @@ if __name__ == '__main__':
 
     # activate server
     uvicorn.run("server:app", port=5200, log_level="info")
+    # per = MaintenanceWorker.nodes.get(uid="m0001")
+    # print(parse_record_to_dict(per))
+    # attr={"malfunc_time": "2022-05-26 16:05:00", "malfunction": "排水系统堵塞", "place": "4号线C0005号列车"}
+    # ret_arr = RelQueryByEnt(ent_type="MaintenanceRecord", attr=attr, rel_type="MaintenancePerformance")
+    # attr = {"uid": "m0001"}
+    # ret_arr = RelQueryByEnt(ent_type="MaintenanceWorker", attr=attr, rel_type="MaintenancePerformance")
+    # print(ret_arr)
+
+
+
 
     # impl = Implement()
     # # id = impl.init_ner(NerTypes.BERT_BILSTM_CRF)

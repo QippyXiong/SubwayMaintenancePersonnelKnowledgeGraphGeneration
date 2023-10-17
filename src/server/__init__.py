@@ -11,7 +11,6 @@ from dataclasses import dataclass
 # def main():
 app = FastAPI()
 
-
 from database import MaintenanceWorker, Capacity
 from database.utils import EntityQueryByAtt, RelQueryByEnt, getRelEnt, CreateEnt, kg_mapping, kg_majorkey_mapping, \
     handle_time_key, CreateRel, UpdateEnt, UpdateRel, DeleteEnt, DeleteRel

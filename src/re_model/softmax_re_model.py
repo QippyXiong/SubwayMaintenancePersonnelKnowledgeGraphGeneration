@@ -7,7 +7,7 @@ import torch
 from dataclasses_json import dataclass_json
 from torch import nn, tensor, int32, save as torchsave, argmax, load as torchload
 from torch.optim import AdamW
-from torch.optim.lr_scheduler import LRScheduler
+from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import BertModel, AutoTokenizer, BertConfig, logging as trans_loger
@@ -275,7 +275,7 @@ class SoftmaxReModel(nn.Module):
         
         total_step = tps.num_epochs * len(train_loader)
         optimizer = AdamW(grouped_params, lr=tps.linear_lr, eps=tps.eps)
-        scheduler : LRScheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=int(tps.warm_up_proportion * total_step), num_training_steps=total_step)
+        scheduler : _LRScheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=int(tps.warm_up_proportion * total_step), num_training_steps=total_step)
 
         for epoch in range(1, tps.num_epochs + 1):
             iteration = tqdm(train_loader)

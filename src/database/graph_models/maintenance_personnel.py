@@ -96,7 +96,7 @@ class MaintenanceWorker(StructuredNode):
 	department 		= StringProperty(max_length=20)														# 部门
 
 	CapacityRate 	= RelationshipFrom('Capacity', 'RATE', model=CapacityRate)  							# 维修能力
-	MaintenancePerformance = RelationshipTo('MaintenanceRecord','PERFORMED', model=MaintenancePerformance)   # 维修表现
+	MaintenancePerformance = RelationshipFrom('MaintenanceRecord','PERFORMED', model=MaintenancePerformance)   # 维修表现
 
 
 class Volunteer(StructuredNode):

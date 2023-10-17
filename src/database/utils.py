@@ -298,7 +298,7 @@ def load_excel_file_to_graph(file_path: str):
 			# print(record)
 
 			# 查询维修记录是否未关联此条记录的维修人员
-			record2worker = record.perform.all()
+			record2worker = record.MaintenancePerformance.all()
 			ids = [w.uid for w in record2worker]
 			if row_dict['工号'] not in ids:
 				rel = record.MaintenancePerformance.connect(MaintenanceWorker.nodes.get(uid=row_dict['工号']), {
