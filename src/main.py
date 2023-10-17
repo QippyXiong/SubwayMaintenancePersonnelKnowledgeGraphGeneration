@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 # src pckages
 from controller import KGConstructionController, NerTypes, ReTypes
 from controller.contruction_model_types import NerModelComposition, ReModelComposition
-from src.server import read_entity
+from server import read_entity
 from utils.animator import Animator
 
 # 配置文件目录

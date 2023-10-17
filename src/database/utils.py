@@ -488,7 +488,7 @@ def RelQueryByEntsAttr(ent1_type:str, attr1:dict, ent2_type:str, attr2:dict, rel
 		return "ent" + attr1 + "doesnot exist"
 	attr2 = handle_time_key(ent1_type, attr2)
 	ent2 = kg_mapping[ent2_type].nodes.get(**attr2)
-	if ent1 is None:
+	if ent2 is None:
 		return "ent" + attr2 + "doesnot exist"
 	return RelQueryByEnts(ent1, ent2, rel_type)
 
@@ -570,7 +570,8 @@ def GenerateMulRecordByRecord(record:dict) -> tuple[bool, str]:
 		attr = handle_time_key(ent_type="MaintenanceRecord",attr=attr)
 		malrecord = MaintenanceRecord.nodes.get(**attr)
 	# print(parse_record_to_dict(malrecord))
-	rel: RelationshipManager = getattr(person, "MaintenancePerformance")
-	if rel.__len__() == 0:
+	rel: RelationshipManager = getattr(person[0], "MaintenancePerformance")
+	if_exist_edge = rel.relationship(malrecord)
+	if if_exist_edge is None:
 		CreateRel(start_ent=person[0], end_ent=malrecord, rel_name="MaintenancePerformance", attr={"performance": "正常"})
 	return True, "维修记录更新成功"

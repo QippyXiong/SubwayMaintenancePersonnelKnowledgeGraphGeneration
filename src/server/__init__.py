@@ -8,7 +8,7 @@ from neomodel import DateTimeFormatProperty, db, Relationship
 
 from dataclasses import dataclass
 
-from src.database.utils import RelQueryByEntsAttr
+from database.utils import RelQueryByEntsAttr
 
 # def main():
 app = FastAPI()
