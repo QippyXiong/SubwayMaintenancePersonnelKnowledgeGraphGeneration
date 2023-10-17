@@ -68,11 +68,6 @@ class CapacityRate(StructuredRel):
 	"""
 	level		= StringProperty()
 
-	def __iter__(self):
-		attrib_names = ['level']
-		for name in attrib_names:
-			yield getattr(self, name)
-
 
 class Capacity(StructuredNode):
 	r"""
@@ -88,9 +83,9 @@ class MaintenanceWorker(StructuredNode):
 	r"""
 	维修人员实体
 	"""
-	id 				= StringProperty(unique_index=True, required=True, max_length=20)					# 工号 唯一标识
+	uid 			= StringProperty(unique_index=True, required=True, max_length=20)					# 工号 唯一标识
 	name			= StringProperty(index = True, max_length=32)										# 姓名
-	sex 			= StringProperty(choices={'男':'男','女':'女'})  												# 性别
+	sex 			= StringProperty(choices={'男':'男','女':'女'})  									 # 性别
 	nation			= StringProperty(max_length=20)														# 民族
 	phone			= StringProperty(max_length=11)														# 联系方式
 	birth			= DateProperty()																	# 出生日期
@@ -108,9 +103,9 @@ class Volunteer(StructuredNode):
 	r"""
 	志愿者实体
 	"""
-	id = StringProperty(unique_index=True, required=True, max_length=20)								# 志愿者编号 唯一标识
+	uid = StringProperty(unique_index=True, required=True, max_length=20)								# 志愿者编号 唯一标识
 	name = StringProperty(index=True, max_length=32)  					  								# 姓名
-	sex = StringProperty(choices={'男':'男','女':'女'})  											  								# 性别
+	sex = StringProperty(choices={'男':'男','女':'女'})  											  	 # 性别
 	nation = StringProperty(max_length=20) 								    							# 民族
 	phone = StringProperty(max_length=11)  																# 联系方式
 	birth = DateProperty()  																			# 出生日期

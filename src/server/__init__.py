@@ -233,7 +233,7 @@ def read_worker(data: MaintenaceWorkerSearchData):
                     ret_arr.append({"type": "Capacity", "record": cap_dict})
                     cap_name.append(cap.name)
                     # print(ret)
-                query = f"""MATCH (p:MaintenanceWorker{{id : '{person.id}'}})<-[r:RATE] \
+                query = f"""MATCH (p:MaintenanceWorker{{uid : '{person.uid}'}})<-[r:RATE] \
                      -(c:Capacity{{name : '{cap.name}'}}) RETURN r"""
                 # for rel_name, rel in person.__all_relationships__:
                 #     rel: Relationship
@@ -242,9 +242,9 @@ def read_worker(data: MaintenaceWorkerSearchData):
                 #         edge = rel.manager.relationship(node)
                 r, _ = db.cypher_query(query)
                 r = r[0][0]
-                source = {"type":type(person).__name__, "majorkey":{"id":person.id}}
+                source = {"type":type(person).__name__, "majorkey":{"uid":person.uid}}
                 target = {"type":type(cap).__name__, "majorkey":{"name":cap.name}}
-                # rel = {"type": r.type, "record": {"source": person.id, "target": cap.name, "properties": r._properties}}
+                # rel = {"type": r.type, "record": {"source": person.uid, "target": cap.name, "properties": r._properties}}
                 rel = {"type": r.type, "record": {"source": source, "target": target, "properties": r._properties}}
 
                 ret_arr.append(rel)
@@ -261,13 +261,13 @@ def read_worker(data: MaintenaceWorkerSearchData):
                     ret_arr.append({"type": "MaintenanceRecord", "record": rec_dict})
                     rec_infos.append(rec_info)
 
-                query = f"""MATCH (p:MaintenanceWorker{{id: '{person.id}'}})<-[r:PERFORMED]- \
+                query = f"""MATCH (p:MaintenanceWorker{{uid: '{person.uid}'}})<-[r:PERFORMED]- \
                         (re:MaintenanceRecord{{malfunction: '{rec_info["malfunction"]}',          \
                         place: '{rec_info["place"]}',malfunc_time:'{rec_info["malfunc_time"]}'}}) \
                         RETURN r"""
                 r, _ = db.cypher_query(query)
                 r = r[0][0]
-                source = {"type": type(person).__name__, "majorkey": {"id": person.id}}
+                source = {"type": type(person).__name__, "majorkey": {"uid": person.uid}}
                 for key in rec_info.keys():
                     rec_info[key] = str(rec_info[key])
                 target = {"type": type(rec).__name__, "majorkey": rec_info}
