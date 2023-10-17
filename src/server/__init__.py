@@ -8,6 +8,8 @@ from neomodel import DateTimeFormatProperty, db, Relationship
 
 from dataclasses import dataclass
 
+from src.database.utils import RelQueryByEntsAttr
+
 # def main():
 app = FastAPI()
 
@@ -337,7 +339,7 @@ r"""
 below call LLM api
 """
 from llm import gpt_maintainance_record_extraction
-from database.utils import GenerateCapByRecord
+from database.utils import GenerateCapByRecord, GenerateMulRecordByRecord
 
 class ExtractData(BaseModel):
     record: str
@@ -354,11 +356,25 @@ def extract_maintainance_record(data: ExtractData):
     record = data.record
     try:
         infos = gpt_maintainance_record_extraction(record)
+        res = list()
         print(infos)
         for info in infos:
-            ok, msg = GenerateCapByRecord(info)
+            ok, msg = GenerateMulRecordByRecord(info)
             if not ok:
                 return {'ok': False, 'msg': msg, 'data': infos }
+            else:
+                attr1 = {"name": info["person"]}
+                attr2 = {"malfunction": info["malfunc"],
+                        "place": info["place"],
+                        "malfunc_time": info["begin_time"]}
+                rec_ent = EntityQueryByAtt(ent_type="MaintenanceRecord", attr=attr2)
+                per_ent = EntityQueryByAtt(ent_type="MaintenanceWorker",attr=attr1)
+                rel = RelQueryByEntsAttr(attr1=attr1, attr2=attr2,
+                                         ent1_type="MaintenanceWorker", ent2_type="MaintenanceRecord",
+                                         rel_type="MaintenancePerformance")
+                res.append(rec_ent)
+                res.append(per_ent)
+                res.append(rel)
+                return {'ok': True, 'msg': 'success', 'data': res}
     except ValueError as e:
-        return {'ok': False, 'msg': str(e), 'data': infos }
-    return {'ok': True, 'msg': 'success', 'data': infos }
+        return {'ok': False, 'msg': str(e), 'data': infos}

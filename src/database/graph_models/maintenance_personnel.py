@@ -44,7 +44,7 @@ class VolunteerActivity(StructuredNode):
 			(format="%Y-%m-%d %H:%M:%S")								# 结束时间
 	review			= StringProperty()									# 返修评价
 
-	perform = Relationship('MaintenanceWorker', 'PERFORMED', model=MaintenancePerformance)
+	# perform = Relationship('MaintenanceWorker', 'PERFORMED', model=MaintenancePerformance)
 
 
 class SkillAssessResult(StructuredRel):

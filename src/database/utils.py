@@ -1,8 +1,8 @@
 r"""
 一些工具方法，目前包含：
 1.读人工制定excel文件内容到图谱中
-
 """
+
 import datetime
 from typing import Union, Dict, List, Optional
 
@@ -49,8 +49,6 @@ malfunc_capacity_mapping = {
 	"地铁信号故障": "地铁信号维修",
 	"监视系统故障": "监视系统维修"
 }
-
-
 
 def GetEntAttribute(class_name:str):
 	r"""
@@ -478,6 +476,30 @@ def RelQueryByRel(rel_type: str, rel :RelationshipManager):
 		# 	ret_arr.append({"type": type(edge.start_node()).__name__, "record": record2})
 	return ret_arr
 
+def RelQueryByEntsAttr(ent1_type:str, attr1:dict, ent2_type:str, attr2:dict, rel_type:str):
+	r"""
+	由双端实体得到关系边
+	Args:
+	Returns:
+	"""
+	attr1 = handle_time_key(ent1_type, attr1)
+	ent1 = kg_mapping[ent1_type].nodes.get(**attr1)
+	if ent1 is None:
+		return "ent" + attr1 + "doesnot exist"
+	attr2 = handle_time_key(ent1_type, attr2)
+	ent2 = kg_mapping[ent2_type].nodes.get(**attr2)
+	if ent1 is None:
+		return "ent" + attr2 + "doesnot exist"
+	return RelQueryByEnts(ent1, ent2, rel_type)
+
+def RelQueryByEnts(ent1: StructuredNode, ent2: StructuredNode, rel_type:Optional[str]):
+	rel: RelationshipManager = getattr(ent1, rel_type)
+	edge = rel.relationship(ent2)
+	source = {"type": type(ent1).__name__, "element_id": edge._start_node_element_id}
+	target = {"type": type(ent2).__name__, "element_id": edge._end_node_element_id}
+	properties = parse_record_to_dict(edge)
+	record = {"source": source, "target": target, "properties": properties}
+	return {"type": type(edge).__name__, "record": record}
 def get_time_key(ent_class: Union[StructuredNode, StructuredRel]):
 	r"""
 	得到类的时间属性字段
