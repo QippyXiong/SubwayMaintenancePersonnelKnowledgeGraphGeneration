@@ -61,9 +61,6 @@ class Implement(KGConstructionController):
 
 from typing import Union, Dict
 
-# from typing import Union
-
-
 import uvicorn
 
 from pathlib import Path
@@ -92,6 +89,9 @@ if __name__ == '__main__':
     with open(LLM_FILE_PATH, 'r', encoding='UTF-8') as fp:
         llm = json5.load(fp)
     connect_llm("openai", **llm)
+
+    # 写入模拟数据
+    load_excel_file_to_graph(Path(os.path.dirname(__file__)).parent.joinpath('data', 'database', 'Synthesis', '维保人员数据.xlsx'))
 
     # activate server
     uvicorn.run("server:app", port=5200, log_level="info")

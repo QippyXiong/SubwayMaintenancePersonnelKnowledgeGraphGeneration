@@ -23,7 +23,7 @@ kg_mapping = {
 	"MaintenancePerformance": MaintenancePerformance
 }
 kg_majorkey_mapping = {
-	"MaintenanceWorker"		: ["id"],
+	"MaintenanceWorker"		: ["uid"],
 	"Capacity"		   		: ["name"],
 	"MaintenanceRecord"		: ["malfunction", "place", "malfunc_time"]
 }
@@ -139,7 +139,7 @@ def DeleteRel(start_ent:StructuredNode, end_ent:StructuredNode, rel_name:str):
 
 def UpdateEnt(class_name:str, attr:dict, new_attr:dict):
 	r"""
-		eg: 匹配 attr:{id:"3456",name:"张三"}，修改 new_attr{name:"李四"}
+		eg: 匹配 attr:{uid:"3456",name:"张三"}，修改 new_attr{name:"李四"}
 		修改主键： 判断修改后是否重复
 	"""
 
@@ -229,7 +229,7 @@ def load_excel_file_to_graph(file_path: str):
 		return
 
 	mapping_worker = {
-		'id' 				: '工号/志愿者编号',
+		'uid' 				: '工号/志愿者编号',
 		'name'				: '姓名',
 		'sex' 				: '性别',
 		'nation'			: '民族',
@@ -244,7 +244,7 @@ def load_excel_file_to_graph(file_path: str):
 	# mapping_worker = { mapping_worker[key]: key for key in mapping_worker }
 
 	mapping_record = {
-		# 'id'				: '工号',
+		# 'uid'				: '工号',
 		'malfunction' 		: '故障类型',
 		'place'				: '故障位置',
 		'malfunc_time'		: '故障上报时间',
@@ -263,7 +263,7 @@ def load_excel_file_to_graph(file_path: str):
 
 	# 处理维保人员数据
 	query = r"""CREATE CONSTRAINT MaintenanceWork_unique_key 
-			FOR(m: MaintenanceWorker) REQUIRE(m.id) IS UNIQUE
+			FOR(m: MaintenanceWorker) REQUIRE(m.uid) IS UNIQUE
 	"""
 
 	worker_data = pd.read_excel(file_path, sheet_name='维保人员')
@@ -274,7 +274,7 @@ def load_excel_file_to_graph(file_path: str):
 		for key in data_dict:
 			data_dict[key] = row_dict[data_dict[key]]
 		try:
-			worker = MaintenanceWorker.nodes.get(id = data_dict['id'])
+			worker = MaintenanceWorker.nodes.get(uid = data_dict['uid'])
 		except Exception as e:
 			worker = MaintenanceWorker(**data_dict)
 			worker.phone = str(worker.phone)
@@ -299,9 +299,9 @@ def load_excel_file_to_graph(file_path: str):
 
 			# 查询维修记录是否未关联此条记录的维修人员
 			record2worker = record.perform.all()
-			ids = [w.id for w in record2worker]
+			ids = [w.uid for w in record2worker]
 			if row_dict['工号'] not in ids:
-				rel = record.MaintenancePerformance.connect(MaintenanceWorker.nodes.get(id=row_dict['工号']), {
+				rel = record.MaintenancePerformance.connect(MaintenanceWorker.nodes.get(uid=row_dict['工号']), {
 					'malfunc_type': record.malfunction,  # 维修记录故障内容记录故障类型
 					'performance': record.review  # 维修记录返修评价记录维修效果
 				})
@@ -310,7 +310,7 @@ def load_excel_file_to_graph(file_path: str):
 			record = MaintenanceRecord(**data_dict)
 			# print("ttt",record)
 			record.save()
-			rel = record.MaintenancePerformance.connect( MaintenanceWorker.nodes.get(id=row_dict['工号']), {
+			rel = record.MaintenancePerformance.connect( MaintenanceWorker.nodes.get(uid=row_dict['工号']), {
 				'malfunc_type': record.malfunction,  # 维修记录故障内容记录故障类型
 				'performance': record.review  # 维修记录返修评价记录维修效果
 			 } )
@@ -331,7 +331,7 @@ def load_excel_file_to_graph(file_path: str):
 			capacity = Capacity(**data_dict)
 			capacity.save()
 		try:
-			worker2capacity = capacity.CapacityRate.connect(MaintenanceWorker.nodes.get(id=row_dict['维保人员工号']), {
+			worker2capacity = capacity.CapacityRate.connect(MaintenanceWorker.nodes.get(uid=row_dict['维保人员工号']), {
 				'level': row_dict['维修能力等级'],
 			 } )
 			worker2capacity.save()
