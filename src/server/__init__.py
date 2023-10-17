@@ -344,6 +344,7 @@ from database.utils import GenerateCapByRecord, GenerateMulRecordByRecord
 class ExtractData(BaseModel):
     record: str
 
+from functools import reduce
 
 @app.post("/llm/extract/")
 def extract_maintainance_record(data: ExtractData):
@@ -367,14 +368,15 @@ def extract_maintainance_record(data: ExtractData):
                 attr2 = {"malfunction": info["malfunc"],
                         "place": info["place"],
                         "malfunc_time": info["begin_time"]}
-                rec_ent = EntityQueryByAtt(ent_type="MaintenanceRecord", attr=attr2)
-                per_ent = EntityQueryByAtt(ent_type="MaintenanceWorker",attr=attr1)
+                rec_ent = EntityQueryByAtt(ent_type="MaintenanceRecord", attr=attr2)[0]
+                per_ent = EntityQueryByAtt(ent_type="MaintenanceWorker",attr=attr1)[0]
                 rel = RelQueryByEntsAttr(attr1=attr1, attr2=attr2,
                                          ent1_type="MaintenanceWorker", ent2_type="MaintenanceRecord",
                                          rel_type="MaintenancePerformance")
                 res.append(rec_ent)
                 res.append(per_ent)
                 res.append(rel)
-                return {'ok': True, 'msg': 'success', 'data': res}
+            res = reduce(lambda x, y: x + [y] if y not in x else x, [[], ] + res)
+        return {'ok': True, 'msg': 'success', 'data': res }
     except ValueError as e:
         return {'ok': False, 'msg': str(e), 'data': infos}
